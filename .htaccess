@@ -1,0 +1,5 @@
+# Bloquea el acceso directo vía Apache a esta carpeta.
+# Esta aplicación debe accederse SIEMPRE a través de "php artisan serve"
+# en http://localhost:8000 — nunca directamente por Apache, ya que eso
+# expone el código fuente y el .env (con credenciales de la base de datos).
+Require all denied
