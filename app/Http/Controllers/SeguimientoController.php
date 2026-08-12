@@ -161,8 +161,7 @@ class SeguimientoController extends Controller
     public function historial(Expediente $expediente): View
     {
         $expediente->load([
-            'cliente', 'abogado', 'demandantes', 'demandados',
-            'encargadoActual', 'encargadoAnterior', 'seguidores',
+            'cliente', 'abogado', 'demandantes', 'demandados', 'seguidores',
         ]);
 
         $seguimientosSinRevisar = $expediente->seguimientos()

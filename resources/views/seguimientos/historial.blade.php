@@ -48,11 +48,11 @@
         </div>
         <div>
             <dt class="text-gray-400 text-xs uppercase tracking-wide">Encargado actual</dt>
-            <dd class="text-gray-700">{{ $expediente->encargadoActual?->name ?? '—' }}</dd>
+            <dd class="text-gray-700">{{ $expediente->encargado_actual ?? '—' }}</dd>
         </div>
         <div>
             <dt class="text-gray-400 text-xs uppercase tracking-wide">Encargado anterior</dt>
-            <dd class="text-gray-700">{{ $expediente->encargadoAnterior?->name ?? '—' }}</dd>
+            <dd class="text-gray-700">{{ $expediente->enc_anterior ?? '—' }}</dd>
         </div>
         <div class="col-span-2 md:col-span-3">
             <dt class="text-gray-400 text-xs uppercase tracking-wide">Seguimiento (encargados)</dt>

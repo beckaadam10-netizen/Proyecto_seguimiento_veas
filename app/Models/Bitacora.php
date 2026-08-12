@@ -106,8 +106,8 @@ class Bitacora extends Model
         // solo la etiqueta de la fila).
         'cliente_id'             => 'Cliente',
         'abogado_id'             => 'Abogado',
-        'encargado_actual_id'    => 'Encargado actual',
-        'enc_anterior_id'        => 'Encargado anterior',
+        'encargado_actual'       => 'Encargado actual',
+        'enc_anterior'           => 'Encargado anterior',
         'responsable_id'         => 'Responsable',
         'tipo_tramite_id'        => 'Tipo de trámite',
         'institucion_publica_id' => 'Institución pública',
@@ -128,8 +128,6 @@ class Bitacora extends Model
     private const RESOLVER_FK = [
         'cliente_id'             => [Cliente::class, 'nombre_completo'],
         'abogado_id'             => [Abogado::class, 'nombre'],
-        'encargado_actual_id'    => [User::class, 'name'],
-        'enc_anterior_id'        => [User::class, 'name'],
         'responsable_id'         => [Abogado::class, 'nombre'],
         'tipo_tramite_id'        => [TipoTramite::class, 'nombre'],
         'institucion_publica_id' => [InstitucionPublica::class, 'nombre'],

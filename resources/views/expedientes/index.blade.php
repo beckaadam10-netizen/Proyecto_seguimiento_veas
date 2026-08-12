@@ -286,23 +286,15 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Encargado actual</label>
-                            <select name="encargado_actual_id"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
-                                <option value="">— Sin asignar —</option>
-                                @foreach($usuarios as $u)
-                                    <option value="{{ $u->id }}" {{ old('encargado_actual_id') == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
-                                @endforeach
-                            </select>
+                            <input type="text" name="encargado_actual" value="{{ old('encargado_actual') }}"
+                                   placeholder="Nombre de la persona encargada"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Encargado anterior</label>
-                            <select name="enc_anterior_id"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
-                                <option value="">— Sin asignar —</option>
-                                @foreach($usuarios as $u)
-                                    <option value="{{ $u->id }}" {{ old('enc_anterior_id') == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
-                                @endforeach
-                            </select>
+                            <input type="text" name="enc_anterior" value="{{ old('enc_anterior') }}"
+                                   placeholder="Nombre de la persona encargada anteriormente"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
                         </div>
                     </div>
                     <div>
@@ -523,23 +515,15 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Encargado actual</label>
-                            <select name="encargado_actual_id"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
-                                <option value="">— Sin asignar —</option>
-                                @foreach($usuarios as $u)
-                                    <option value="{{ $u->id }}" {{ $expediente->encargado_actual_id == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
-                                @endforeach
-                            </select>
+                            <input type="text" name="encargado_actual" value="{{ old('encargado_actual', $expediente->encargado_actual) }}"
+                                   placeholder="Nombre de la persona encargada"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Encargado anterior</label>
-                            <select name="enc_anterior_id"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
-                                <option value="">— Sin asignar —</option>
-                                @foreach($usuarios as $u)
-                                    <option value="{{ $u->id }}" {{ $expediente->enc_anterior_id == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
-                                @endforeach
-                            </select>
+                            <input type="text" name="enc_anterior" value="{{ old('enc_anterior', $expediente->enc_anterior) }}"
+                                   placeholder="Nombre de la persona encargada anteriormente"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
                         </div>
                     </div>
                     <div>

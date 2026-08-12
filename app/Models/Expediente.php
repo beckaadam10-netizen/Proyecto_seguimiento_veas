@@ -25,8 +25,8 @@ class Expediente extends Model
         'juzgado',
         'piso',
         'direccion',
-        'encargado_actual_id',
-        'enc_anterior_id',
+        'encargado_actual',
+        'enc_anterior',
         'fecha_recepcion',
         'monto_reclamado',
         'descripcion',
@@ -54,16 +54,6 @@ class Expediente extends Model
     public function estadoExpediente(): BelongsTo
     {
         return $this->belongsTo(EstadoExpediente::class);
-    }
-
-    public function encargadoActual(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'encargado_actual_id');
-    }
-
-    public function encargadoAnterior(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'enc_anterior_id');
     }
 
     public function seguidores(): BelongsToMany
