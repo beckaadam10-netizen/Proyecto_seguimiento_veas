@@ -66,6 +66,11 @@ class Expediente extends Model
         return $this->hasMany(Seguimiento::class)->orderByDesc('fecha_actuacion');
     }
 
+    public function actualizaciones(): HasMany
+    {
+        return $this->hasMany(ActualizacionExpediente::class)->orderByDesc('created_at');
+    }
+
     public function documentos(): HasMany
     {
         return $this->hasMany(Documento::class)->orderByDesc('created_at');

@@ -80,6 +80,7 @@ class ExpedienteController extends Controller
             'cliente',
             'abogado',
             'partes',
+            'actualizaciones.usuario',
             'seguimientos.usuario.rol',
             'seguimientos.tipoActuacion',
             'seguimientos.tipoDocumento',

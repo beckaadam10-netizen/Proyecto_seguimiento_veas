@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AbogadoController;
+use App\Http\Controllers\ActualizacionExpedienteController;
 use App\Http\Controllers\AdministracionController;
 use App\Http\Controllers\AudienciaController;
 use App\Http\Controllers\BitacoraController;
@@ -86,6 +87,12 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     Route::get('expedientes/{expediente}/documentos/pdf', [ExpedienteController::class, 'documentosPdf'])
          ->middleware(['permission:expedientes.ver', 'permission:documentos.descargar'])
          ->name('expedientes.documentos.pdf');
+    Route::post('expedientes/{expediente}/actualizaciones', [ActualizacionExpedienteController::class, 'store'])
+         ->middleware('permission:expedientes.modificar')
+         ->name('expedientes.actualizaciones.store');
+    Route::delete('actualizaciones/{actualizacion}', [ActualizacionExpedienteController::class, 'destroy'])
+         ->middleware('permission:expedientes.modificar')
+         ->name('actualizaciones.destroy');
 
     // Trámites
     recursoConPermisos('tramites', TramiteController::class, 'tramites');
