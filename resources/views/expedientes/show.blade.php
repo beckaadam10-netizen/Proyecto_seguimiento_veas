@@ -215,11 +215,9 @@
                     <i class="fas fa-comment-dots text-blue-500 mr-2"></i>
                     Actualizaciones del caso ({{ $expediente->actualizaciones->count() }})
                 </h3>
-                @if($expediente->actualizaciones->count() > 3)
                 <a href="{{ route('expedientes.actualizaciones.index', $expediente) }}" class="text-xs text-brand-700 hover:underline">
                     Ver todo
                 </a>
-                @endif
             </div>
             @if(auth()->user()->puede('expedientes', 'modificar'))
             <form method="POST" action="{{ route('expedientes.actualizaciones.store', $expediente) }}" class="p-5 border-b flex gap-2 items-start">
