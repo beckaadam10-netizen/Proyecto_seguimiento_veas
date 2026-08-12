@@ -30,13 +30,19 @@ use Illuminate\Support\Facades\Route;
 // Registra un recurso partido en 3 niveles de permiso, respetando el orden
 // index → create/store → show → edit/update → destroy para que "create" no
 // quede atrapado por el wildcard {id} de "show" (ambos son /recurso/{segmento}).
-function recursoConPermisos(string $uri, string $controller, string $modulo, array $parametros = []): void
-{
-    Route::resource($uri, $controller)->only(['index'])->parameters($parametros)->middleware("permission:{$modulo}.ver");
-    Route::resource($uri, $controller)->only(['create', 'store'])->parameters($parametros)->middleware("permission:{$modulo}.crear");
-    Route::resource($uri, $controller)->only(['edit', 'update'])->parameters($parametros)->middleware("permission:{$modulo}.modificar");
-    Route::resource($uri, $controller)->only(['show'])->parameters($parametros)->middleware("permission:{$modulo}.ver");
-    Route::resource($uri, $controller)->only(['destroy'])->parameters($parametros)->middleware("permission:{$modulo}.eliminar");
+//
+// Envuelta en function_exists() porque "route:cache" vuelve a requerir este
+// archivo una segunda vez dentro del mismo proceso para obtener rutas
+// "frescas"; sin el guard, PHP tira "Cannot redeclare" en producción.
+if (! function_exists('recursoConPermisos')) {
+    function recursoConPermisos(string $uri, string $controller, string $modulo, array $parametros = []): void
+    {
+        Route::resource($uri, $controller)->only(['index'])->parameters($parametros)->middleware("permission:{$modulo}.ver");
+        Route::resource($uri, $controller)->only(['create', 'store'])->parameters($parametros)->middleware("permission:{$modulo}.crear");
+        Route::resource($uri, $controller)->only(['edit', 'update'])->parameters($parametros)->middleware("permission:{$modulo}.modificar");
+        Route::resource($uri, $controller)->only(['show'])->parameters($parametros)->middleware("permission:{$modulo}.ver");
+        Route::resource($uri, $controller)->only(['destroy'])->parameters($parametros)->middleware("permission:{$modulo}.eliminar");
+    }
 }
 
 // ── Rastreo público (sin login): estado del trámite por nombre + DNI ──────
