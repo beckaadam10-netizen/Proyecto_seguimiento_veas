@@ -7,14 +7,14 @@
 
         <!-- Email o Nombre/DNI -->
         <div>
-            <x-input-label for="email" value="Email (staff) o Nombre completo / DNI (clientes)" />
+            <x-input-label for="email" value="Email (staff) o Nombre completo / C.I/NIT (clientes)" />
             <x-text-input id="email" class="block mt-1 w-full" type="text" name="email" :value="old('email')" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
         <!-- Password -->
         <div class="mt-4">
-            <x-input-label for="password" value="Contraseña (los clientes: su DNI)" />
+            <x-input-label for="password" value="Contraseña (los clientes: su C.I/NIT)" />
 
             <x-text-input id="password" class="block mt-1 w-full"
                             type="password"

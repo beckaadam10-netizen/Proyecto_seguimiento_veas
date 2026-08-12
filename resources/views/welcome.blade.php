@@ -66,7 +66,7 @@
             <h3 class="text-xl font-semibold text-gray-800 mb-1">
                 <i class="fas fa-magnifying-glass text-brand-600 mr-1"></i> Consultá el estado de tu trámite
             </h3>
-            <p class="text-sm text-gray-500 mb-5">Ingresá tu nombre completo y tu DNI, tal como los tenemos registrados.</p>
+            <p class="text-sm text-gray-500 mb-5">Ingresá tu nombre completo y tu C.I/NIT, tal como los tenemos registrados.</p>
 
             <form method="POST" action="{{ route('rastreo.buscar') }}" class="flex flex-wrap gap-3 items-end">
                 @csrf
@@ -80,7 +80,7 @@
                     </div>
                 </div>
                 <div class="flex-1 min-w-40">
-                    <label class="block text-xs text-gray-500 mb-1">DNI</label>
+                    <label class="block text-xs text-gray-500 mb-1">C.I/NIT</label>
                     <div class="relative">
                         <i class="fas fa-id-card absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm"></i>
                         <input type="text" name="dni" value="{{ $dniBuscado ?? old('dni') }}" required

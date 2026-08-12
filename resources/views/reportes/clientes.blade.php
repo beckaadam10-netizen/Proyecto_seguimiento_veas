@@ -47,7 +47,7 @@
 <form method="GET" class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
     <div>
         <label class="block text-xs text-gray-500 mb-1">Buscar</label>
-        <input type="text" name="buscar" value="{{ request('buscar') }}" placeholder="Nombre, DNI, email..."
+        <input type="text" name="buscar" value="{{ request('buscar') }}" placeholder="Nombre, C.I/NIT, email..."
                class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-56">
     </div>
     <div>
@@ -85,7 +85,7 @@
             <tr>
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Cliente</th>
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Tipo</th>
-                <th class="px-4 py-3 text-left font-semibold text-gray-600">DNI / NIT</th>
+                <th class="px-4 py-3 text-left font-semibold text-gray-600">C.I/NIT</th>
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Contacto</th>
                 <th class="px-4 py-3 text-center font-semibold text-gray-600">Expedientes</th>
                 <th class="px-4 py-3 text-center font-semibold text-gray-600">Trámites</th>

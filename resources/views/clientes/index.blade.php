@@ -19,7 +19,7 @@
     <div class="flex-1 min-w-48">
         <label class="block text-xs text-gray-500 mb-1">Buscar</label>
         <input type="text" name="buscar" value="{{ request('buscar') }}"
-               placeholder="Nombre, DNI, email..."
+               placeholder="Nombre, C.I/NIT, email..."
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400">
     </div>
     <div>
@@ -53,7 +53,7 @@
         <thead class="bg-gray-50">
             <tr>
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Nombre / Razón Social</th>
-                <th class="px-4 py-3 text-left font-semibold text-gray-600">DNI / NIT</th>
+                <th class="px-4 py-3 text-left font-semibold text-gray-600">C.I/NIT</th>
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Contacto</th>
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Tipo</th>
                 <th class="px-4 py-3 text-center font-semibold text-gray-600">Expedientes</th>
@@ -157,7 +157,7 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">DNI / NIT *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">C.I/NIT *</label>
                             <input type="text" name="dni" value="{{ old('dni') }}" required
                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
                             @error('dni')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
@@ -253,7 +253,7 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">DNI / NIT *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">C.I/NIT *</label>
                             <input type="text" name="dni" value="{{ $cliente->dni }}" required
                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
                         </div>

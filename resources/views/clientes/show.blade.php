@@ -38,7 +38,7 @@
             </div>
             <dl class="space-y-2 text-sm">
                 <div class="flex justify-between">
-                    <dt class="text-gray-500">DNI / NIT</dt>
+                    <dt class="text-gray-500">C.I/NIT</dt>
                     <dd class="font-medium">{{ $cliente->dni }}</dd>
                 </div>
                 @if($cliente->email)

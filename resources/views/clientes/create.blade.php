@@ -21,7 +21,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">DNI / NIT *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">C.I/NIT *</label>
                     <input type="text" name="dni" value="{{ old('dni') }}" required
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
                 </div>

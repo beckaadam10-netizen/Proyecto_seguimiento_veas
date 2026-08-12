@@ -36,7 +36,7 @@
             <tr>
                 <th>Cliente</th>
                 <th style="width:70px">Tipo</th>
-                <th style="width:90px">DNI / NIT</th>
+                <th style="width:90px">C.I/NIT</th>
                 <th>Contacto</th>
                 <th style="width:60px" class="centro">Exped.</th>
                 <th style="width:60px" class="centro">Trámites</th>

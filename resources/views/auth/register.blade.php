@@ -1,14 +1,14 @@
 <x-guest-layout>
     <p class="text-sm text-gray-600 mb-4">
-        Registrate con tu DNI y el email que el estudio tiene registrado para vos, para poder ver tus trámites y expedientes.
+        Registrate con tu C.I/NIT y el email que el estudio tiene registrado para vos, para poder ver tus trámites y expedientes.
     </p>
 
     <form method="POST" action="{{ route('register') }}">
         @csrf
 
-        <!-- DNI -->
+        <!-- C.I/NIT -->
         <div>
-            <x-input-label for="dni" value="DNI" />
+            <x-input-label for="dni" value="C.I/NIT" />
             <x-text-input id="dni" class="block mt-1 w-full" type="text" name="dni" :value="old('dni')" required autofocus autocomplete="off" />
             <x-input-error :messages="$errors->get('dni')" class="mt-2" />
         </div>
