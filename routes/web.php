@@ -87,6 +87,9 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     Route::get('expedientes/{expediente}/documentos/pdf', [ExpedienteController::class, 'documentosPdf'])
          ->middleware(['permission:expedientes.ver', 'permission:documentos.descargar'])
          ->name('expedientes.documentos.pdf');
+    Route::get('expedientes/{expediente}/actualizaciones', [ActualizacionExpedienteController::class, 'index'])
+         ->middleware('permission:expedientes.ver')
+         ->name('expedientes.actualizaciones.index');
     Route::post('expedientes/{expediente}/actualizaciones', [ActualizacionExpedienteController::class, 'store'])
          ->middleware('permission:expedientes.modificar')
          ->name('expedientes.actualizaciones.store');

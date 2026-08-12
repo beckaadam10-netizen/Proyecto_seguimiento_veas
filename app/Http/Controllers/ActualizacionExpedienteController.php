@@ -6,9 +6,19 @@ use App\Models\ActualizacionExpediente;
 use App\Models\Expediente;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class ActualizacionExpedienteController extends Controller
 {
+    public function index(Request $request, Expediente $expediente): View
+    {
+        $this->autorizarPropioCliente($request, $expediente);
+
+        $expediente->load('actualizaciones.usuario');
+
+        return view('expedientes.actualizaciones', compact('expediente'));
+    }
+
     public function store(Request $request, Expediente $expediente): RedirectResponse
     {
         $data = $request->validate([

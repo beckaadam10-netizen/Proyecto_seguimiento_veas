@@ -215,6 +215,11 @@
                     <i class="fas fa-comment-dots text-blue-500 mr-2"></i>
                     Actualizaciones del caso ({{ $expediente->actualizaciones->count() }})
                 </h3>
+                @if($expediente->actualizaciones->count() > 3)
+                <a href="{{ route('expedientes.actualizaciones.index', $expediente) }}" class="text-xs text-brand-700 hover:underline">
+                    Ver todo
+                </a>
+                @endif
             </div>
             @if(auth()->user()->puede('expedientes', 'modificar'))
             <form method="POST" action="{{ route('expedientes.actualizaciones.store', $expediente) }}" class="p-5 border-b flex gap-2 items-start">
@@ -226,8 +231,8 @@
                 </button>
             </form>
             @endif
-            <div class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-                @forelse($expediente->actualizaciones as $act)
+            <div class="divide-y divide-gray-100">
+                @forelse($expediente->actualizaciones->take(3) as $act)
                 <div class="px-5 py-3 flex items-start gap-3">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm text-gray-800 whitespace-pre-line">{{ $act->texto }}</p>
