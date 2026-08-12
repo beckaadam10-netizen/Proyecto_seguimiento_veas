@@ -46,6 +46,10 @@ class RastreoController extends Controller
 
         $registro->modelo->load(['gastos.cobros', 'gastos.seguimiento', 'seguimientos.tipoActuacion', 'seguimientos.usuario']);
 
+        if ($registro->modelo instanceof Expediente) {
+            $registro->modelo->load('actualizaciones');
+        }
+
         $etapas = $registro->tipo === 'tramite'
             ? $this->construirLineaDeTiempoTramite($registro->modelo)
             : $this->construirLineaDeTiempoExpediente($registro->modelo);
@@ -159,7 +163,7 @@ class RastreoController extends Controller
             }
         }
 
-        return $this->conGastosYDocumentosPorEtapa($etapas, $tramite, $cambios->pluck('id'));
+        return $this->conGastosYDocumentosPorEtapa($etapas, $tramite);
     }
 
     // Los expedientes no tienen un flujo fijo de estados (pueden pasar de "activo" a
@@ -202,7 +206,7 @@ class RastreoController extends Controller
             ];
         }
 
-        return $this->conGastosYDocumentosPorEtapa($etapas, $expediente, $cambios->pluck('id'));
+        return $this->conGastosYDocumentosPorEtapa($etapas, $expediente);
     }
 
     // Un seguimiento solo cuenta como marcador de una etapa nueva (y por lo tanto se
@@ -243,47 +247,34 @@ class RastreoController extends Controller
 
     // Reparte los gastos y documentos del trámite/expediente entre las etapas ya
     // completadas, según en qué rango de fechas (entre una etapa y la siguiente) caiga cada uno.
-    private function conGastosYDocumentosPorEtapa(array $etapas, Tramite|Expediente $registro, Collection $idsMarcadoresEstado): array
+    private function conGastosYDocumentosPorEtapa(array $etapas, Tramite|Expediente $registro): array
     {
-        // Cada Gasto tiene su propio seguimiento_id cuando se cargó junto a una actuación
-        // puntual; agrupamos una sola vez acá (sin queries nuevas, ya viene todo cargado)
-        // para poder mostrar cada gasto pegado a la actuación que lo generó.
-        $gastosPorSeguimiento = $registro->gastos->groupBy('seguimiento_id');
+        // Las actualizaciones (notas de avance) solo existen para expedientes.
+        $actualizaciones = $registro instanceof Expediente ? $registro->actualizaciones : collect();
 
         foreach ($etapas as $i => &$etapa) {
             if (! $etapa['completada']) {
                 $etapa['gastos'] = collect();
                 $etapa['documentos'] = collect();
-                $etapa['seguimientos'] = collect();
+                $etapa['actualizaciones'] = collect();
                 continue;
             }
 
             $desde = $etapa['fecha'];
             $hasta = $etapas[$i + 1]['fecha'] ?? null;
 
-            $gastosEtapa = $registro->gastos->filter(
+            $etapa['gastos'] = $registro->gastos->filter(
                 fn ($g) => $g->fecha->gte($desde) && (! $hasta || $g->fecha->lt($hasta))
-            );
-
-            // Acá solo quedan los gastos "sueltos" (sin una actuación puntual asociada);
-            // los que sí tienen seguimiento_id se muestran junto a esa actuación, más abajo.
-            $etapa['gastos'] = $gastosEtapa->whereNull('seguimiento_id')->values();
+            )->values();
 
             $etapa['documentos'] = $registro->seguimientos->filter(
                 fn ($s) => $s->archivo_adjunto && $s->fecha_actuacion->gte($desde) && (! $hasta || $s->fecha_actuacion->lt($hasta))
             )->values();
 
-            // Actuaciones (seguimientos) de esta etapa, sin contar los que ya son las
-            // etapas mismas de la línea de tiempo principal (por id, no por categoría:
-            // una actuación común puede tener la misma categoría "Cambio de estado" sin
-            // ser en realidad un cambio de estado real).
-            $etapa['seguimientos'] = $registro->seguimientos->filter(
-                fn ($s) => ! $idsMarcadoresEstado->contains($s->id)
-                    && $s->fecha_actuacion->gte($desde) && (! $hasta || $s->fecha_actuacion->lt($hasta))
-            )
-                ->sortBy('fecha_actuacion')
-                ->each(fn ($s) => $s->gastosAsociados = $gastosPorSeguimiento->get($s->id, collect()))
-                ->values();
+            // Actualizaciones del caso (notas de avance) que caen en el rango de esta etapa.
+            $etapa['actualizaciones'] = $actualizaciones->filter(
+                fn ($a) => $a->created_at->gte($desde) && (! $hasta || $a->created_at->lt($hasta))
+            )->sortBy('created_at')->values();
         }
         unset($etapa);
 

@@ -88,13 +88,16 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
          ->middleware(['permission:expedientes.ver', 'permission:documentos.descargar'])
          ->name('expedientes.documentos.pdf');
     Route::get('expedientes/{expediente}/actualizaciones', [ActualizacionExpedienteController::class, 'index'])
-         ->middleware('permission:expedientes.ver')
+         ->middleware('permission:actualizaciones.ver')
          ->name('expedientes.actualizaciones.index');
     Route::post('expedientes/{expediente}/actualizaciones', [ActualizacionExpedienteController::class, 'store'])
-         ->middleware('permission:expedientes.modificar')
+         ->middleware('permission:actualizaciones.crear')
          ->name('expedientes.actualizaciones.store');
+    Route::put('actualizaciones/{actualizacion}', [ActualizacionExpedienteController::class, 'update'])
+         ->middleware('permission:actualizaciones.modificar')
+         ->name('actualizaciones.update');
     Route::delete('actualizaciones/{actualizacion}', [ActualizacionExpedienteController::class, 'destroy'])
-         ->middleware('permission:expedientes.modificar')
+         ->middleware('permission:actualizaciones.eliminar')
          ->name('actualizaciones.destroy');
 
     // Trámites

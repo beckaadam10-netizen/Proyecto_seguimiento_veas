@@ -209,6 +209,7 @@
         @include('partials._actuaciones', ['seguimientos' => $expediente->seguimientos])
 
         {{-- Actualizaciones del caso --}}
+        @if(auth()->user()->puede('actualizaciones', 'ver'))
         <div class="bg-white rounded-xl shadow-sm">
             <div class="flex items-center justify-between p-5 border-b">
                 <h3 class="font-semibold text-gray-700">
@@ -219,7 +220,7 @@
                     Ver todo
                 </a>
             </div>
-            @if(auth()->user()->puede('expedientes', 'modificar'))
+            @if(auth()->user()->puede('actualizaciones', 'crear'))
             <form method="POST" action="{{ route('expedientes.actualizaciones.store', $expediente) }}" class="p-5 border-b flex gap-2 items-start">
                 @csrf
                 <textarea name="texto" required rows="2" placeholder="Escribí una novedad del caso (ej. estado en el juzgado, próximos pasos)..."
@@ -229,30 +230,8 @@
                 </button>
             </form>
             @endif
-            <div class="divide-y divide-gray-100">
-                @forelse($expediente->actualizaciones->take(3) as $act)
-                <div class="px-5 py-3 flex items-start gap-3">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-800 whitespace-pre-line">{{ $act->texto }}</p>
-                        <p class="text-xs text-gray-400 mt-1">
-                            {{ $act->created_at->format('d/m/Y H:i') }}
-                            @if($act->usuario) · {{ $act->usuario->name }} @endif
-                        </p>
-                    </div>
-                    @if(auth()->user()->puede('expedientes', 'modificar'))
-                    <form method="POST" action="{{ route('actualizaciones.destroy', $act) }}" onsubmit="return confirm('¿Eliminar esta actualización?')">
-                        @csrf @method('DELETE')
-                        <button class="text-gray-300 hover:text-red-500" title="Eliminar">
-                            <i class="fas fa-trash text-xs"></i>
-                        </button>
-                    </form>
-                    @endif
-                </div>
-                @empty
-                <p class="p-5 text-sm text-gray-400 text-center">Sin actualizaciones registradas.</p>
-                @endforelse
-            </div>
         </div>
+        @endif
 
         {{-- Audiencias --}}
         <div class="bg-white rounded-xl shadow-sm">

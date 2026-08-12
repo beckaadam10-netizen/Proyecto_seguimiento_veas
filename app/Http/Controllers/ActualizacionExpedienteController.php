@@ -33,13 +33,21 @@ class ActualizacionExpedienteController extends Controller
         return back()->with('success', 'Actualización agregada.');
     }
 
+    public function update(Request $request, ActualizacionExpediente $actualizacion): RedirectResponse
+    {
+        $data = $request->validate([
+            'texto' => 'required|string|max:2000',
+        ]);
+
+        $actualizacion->update($data);
+
+        return back()->with('success', 'Actualización editada.');
+    }
+
     public function destroy(ActualizacionExpediente $actualizacion): RedirectResponse
     {
-        $expediente = $actualizacion->expediente;
         $actualizacion->delete();
 
-        return redirect()
-            ->route('expedientes.show', $expediente)
-            ->with('success', 'Actualización eliminada.');
+        return back()->with('success', 'Actualización eliminada.');
     }
 }

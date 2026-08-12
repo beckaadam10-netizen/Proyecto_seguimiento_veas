@@ -25,7 +25,7 @@
             Todas las actualizaciones ({{ $expediente->actualizaciones->count() }})
         </h3>
     </div>
-    @if(auth()->user()->puede('expedientes', 'modificar'))
+    @if(auth()->user()->puede('actualizaciones', 'crear'))
     <form method="POST" action="{{ route('expedientes.actualizaciones.store', $expediente) }}" class="p-5 border-b flex gap-2 items-start">
         @csrf
         <textarea name="texto" required rows="2" placeholder="Escribí una novedad del caso (ej. estado en el juzgado, próximos pasos)..."
@@ -37,19 +37,42 @@
     @endif
     <div class="divide-y divide-gray-100">
         @forelse($expediente->actualizaciones as $act)
-        <div class="px-5 py-3 flex items-start gap-3">
-            <div class="flex-1 min-w-0">
-                <p class="text-sm text-gray-800 whitespace-pre-line">{{ $act->texto }}</p>
-                <p class="text-xs text-gray-400 mt-1">
-                    {{ $act->created_at->format('d/m/Y H:i') }}
-                    @if($act->usuario) · {{ $act->usuario->name }} @endif
-                </p>
+        <div class="px-5 py-3">
+            <div id="vista-act-{{ $act->id }}" class="flex items-start gap-3">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-800 whitespace-pre-line">{{ $act->texto }}</p>
+                    <p class="text-xs text-gray-400 mt-1">
+                        {{ $act->created_at->format('d/m/Y H:i') }}
+                        @if($act->usuario) · {{ $act->usuario->name }} @endif
+                        @if($act->created_at != $act->updated_at) · <span class="italic">editado</span> @endif
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    @if(auth()->user()->puede('actualizaciones', 'modificar'))
+                    <button type="button" onclick="toggleEdicionActualizacion({{ $act->id }})" class="text-gray-300 hover:text-brand-700" title="Editar">
+                        <i class="fas fa-pen text-xs"></i>
+                    </button>
+                    @endif
+                    @if(auth()->user()->puede('actualizaciones', 'eliminar'))
+                    <form method="POST" action="{{ route('actualizaciones.destroy', $act) }}" onsubmit="return confirm('¿Eliminar esta actualización?')">
+                        @csrf @method('DELETE')
+                        <button class="text-gray-300 hover:text-red-500" title="Eliminar">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </form>
+                    @endif
+                </div>
             </div>
-            @if(auth()->user()->puede('expedientes', 'modificar'))
-            <form method="POST" action="{{ route('actualizaciones.destroy', $act) }}" onsubmit="return confirm('¿Eliminar esta actualización?')">
-                @csrf @method('DELETE')
-                <button class="text-gray-300 hover:text-red-500" title="Eliminar">
-                    <i class="fas fa-trash text-xs"></i>
+            @if(auth()->user()->puede('actualizaciones', 'modificar'))
+            <form id="form-editar-act-{{ $act->id }}" method="POST" action="{{ route('actualizaciones.update', $act) }}" class="hidden mt-2 flex gap-2 items-start">
+                @csrf @method('PUT')
+                <textarea name="texto" required rows="2"
+                          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">{{ $act->texto }}</textarea>
+                <button type="submit" class="shrink-0 bg-brand-600 hover:bg-brand-700 text-white px-3 py-2 rounded-lg text-sm font-medium">
+                    Guardar
+                </button>
+                <button type="button" onclick="toggleEdicionActualizacion({{ $act->id }})" class="shrink-0 text-gray-500 hover:text-gray-700 px-3 py-2 text-sm">
+                    Cancelar
                 </button>
             </form>
             @endif
@@ -64,3 +87,12 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+function toggleEdicionActualizacion(id) {
+    document.getElementById('vista-act-' + id).classList.toggle('hidden');
+    document.getElementById('form-editar-act-' + id).classList.toggle('hidden');
+}
+</script>
+@endpush

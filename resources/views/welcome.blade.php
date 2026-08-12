@@ -141,7 +141,7 @@
             <div class="mt-6 space-y-0">
                 @foreach($etapas as $i => $etapa)
                 @php
-                    $tieneDetalle = $etapa['completada'] && ($etapa['gastos']->isNotEmpty() || $etapa['seguimientos']->isNotEmpty() || $etapa['descripcion'] || $etapa['observaciones']);
+                    $tieneDetalle = $etapa['completada'] && ($etapa['gastos']->isNotEmpty() || $etapa['actualizaciones']->isNotEmpty() || $etapa['descripcion'] || $etapa['observaciones']);
                     $idEtapa = 'etapa-' . $i;
                 @endphp
                 <div class="flex gap-4">
@@ -213,37 +213,23 @@
                             </div>
                             @endif
 
-                            @if($etapa['seguimientos']->isNotEmpty())
+                            @if($etapa['actualizaciones']->isNotEmpty())
                             <div>
                                 <button type="button" onclick="toggleSeguimientos('{{ $idEtapa }}')"
                                         class="w-full flex items-center justify-between text-xs font-semibold text-brand-700 uppercase hover:text-brand-800">
-                                    <span><i class="fas fa-list-check mr-1"></i> Seguimiento</span>
+                                    <span><i class="fas fa-list-check mr-1"></i> Seguimiento del caso</span>
                                     <span class="flex items-center gap-2 normal-case">
-                                        {{ $etapa['seguimientos']->count() }} {{ Str::plural('actuación', $etapa['seguimientos']->count()) }}
+                                        {{ $etapa['actualizaciones']->count() }} {{ Str::plural('novedad', $etapa['actualizaciones']->count()) }}
                                         <i id="icono-seguimientos-{{ $idEtapa }}" class="fas fa-chevron-down text-[10px]"></i>
                                     </span>
                                 </button>
                                 <ul id="seguimientos-{{ $idEtapa }}" class="hidden space-y-1 mt-2">
-                                    @foreach($etapa['seguimientos'] as $seg)
+                                    @foreach($etapa['actualizaciones'] as $act)
                                     <li class="text-gray-600 text-xs bg-white rounded px-3 py-2">
-                                        <div class="flex justify-between">
-                                            <span class="font-medium text-gray-700">{{ $seg->titulo }}</span>
-                                            <span class="text-gray-400 flex-shrink-0 ml-2">{{ $seg->fecha_actuacion->format('d/m/Y') }}</span>
+                                        <div class="flex justify-between gap-2">
+                                            <span class="text-gray-700 whitespace-pre-line">{{ $act->texto }}</span>
+                                            <span class="text-gray-400 flex-shrink-0">{{ $act->created_at->format('d/m/Y') }}</span>
                                         </div>
-                                        @if($seg->tipoActuacion)
-                                            <span class="text-gray-400">{{ $seg->tipoActuacion->nombre }}</span>
-                                        @endif
-
-                                        @if($seg->gastosAsociados->isNotEmpty())
-                                        <div class="mt-1.5 pt-1.5 border-t border-gray-100 space-y-1">
-                                            @foreach($seg->gastosAsociados as $gastoSeg)
-                                            <div class="flex justify-between items-center text-[11px] text-amber-700">
-                                                <span><i class="fas fa-coins mr-1"></i>{{ $gastoSeg->concepto }}</span>
-                                                <span class="font-semibold">{{ number_format($gastoSeg->monto, 2) }} Bs</span>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                        @endif
                                     </li>
                                     @endforeach
                                 </ul>
