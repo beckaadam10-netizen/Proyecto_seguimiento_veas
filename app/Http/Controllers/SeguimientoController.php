@@ -82,10 +82,14 @@ class SeguimientoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validarDatos($request, [
-            'archivo_adjunto'   => 'required|file|max:10240|mimes:pdf,doc,docx,jpg,png',
+            'archivo_adjunto'   => 'required|file|max:1048576|mimes:pdf,doc,docx,jpg,png',
             'tipo_documento_id' => 'nullable|exists:tipos_documento,id',
             'notificar_cliente' => 'boolean',
         ]);
+
+        if (! auth()->user()->esAdmin()) {
+            $data['fecha_actuacion'] = today()->format('Y-m-d');
+        }
 
         if ($request->hasFile('archivo_adjunto')) {
             $data['archivo_adjunto'] = $request->file('archivo_adjunto')
@@ -213,6 +217,10 @@ class SeguimientoController extends Controller
             'fecha_respuesta'   => 'nullable|date',
             'tipo_documento_id' => 'nullable|exists:tipos_documento,id',
         ]);
+
+        if (! auth()->user()->esAdmin()) {
+            $data['fecha_actuacion'] = $seguimiento->fecha_actuacion->format('Y-m-d');
+        }
 
         $gastos = $this->extraerDatosGasto($data);
 

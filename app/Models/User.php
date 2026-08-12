@@ -69,6 +69,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return ! is_null($this->cliente_id);
     }
 
+    public function esAdmin(): bool
+    {
+        return $this->rol?->nombre === 'Administrador';
+    }
+
     public function tienePermiso(string $permiso): bool
     {
         if (! $this->activo) {

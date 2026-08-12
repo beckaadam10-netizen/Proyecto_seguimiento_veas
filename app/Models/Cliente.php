@@ -41,9 +41,14 @@ class Cliente extends Model
     // ── Accessors ─────────────────────────────────────────────────
     public function getNombreCompletoAttribute(): string
     {
-        return $this->tipo === 'persona_juridica'
-            ? $this->razon_social
-            : "{$this->nombre} {$this->apellido}";
+        // Algunos clientes jurídicos antiguos quedaron sin razón social (era opcional
+        // antes de exigirla en el formulario), así que hace falta un respaldo para
+        // que el accessor nunca devuelva null pese al tipo de retorno string.
+        if ($this->tipo === 'persona_juridica') {
+            return $this->razon_social ?: trim("{$this->nombre} {$this->apellido}") ?: 'Sin nombre';
+        }
+
+        return trim("{$this->nombre} {$this->apellido}") ?: 'Sin nombre';
     }
 
     // Teléfono normalizado para enlaces wa.me: solo dígitos, con código de país (591) si falta.

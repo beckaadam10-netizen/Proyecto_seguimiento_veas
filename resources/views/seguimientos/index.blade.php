@@ -301,9 +301,15 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de actuación</label>
+                        @if(auth()->user()->esAdmin())
+                        <input type="date" name="fecha_actuacion" value="{{ old('fecha_actuacion', date('Y-m-d')) }}" required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
+                        <p class="text-xs text-gray-400 mt-1">Como administrador, podés modificarla.</p>
+                        @else
                         <input type="date" name="fecha_actuacion" value="{{ old('fecha_actuacion', date('Y-m-d')) }}" readonly required
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed">
                         <p class="text-xs text-gray-400 mt-1">Se registra automáticamente con la fecha de hoy.</p>
+                        @endif
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de vencimiento</label>
@@ -459,8 +465,13 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de actuación *</label>
+                        @if(auth()->user()->esAdmin())
                         <input type="date" name="fecha_actuacion" value="{{ $seg->fecha_actuacion->format('Y-m-d') }}" required
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
+                        @else
+                        <input type="date" name="fecha_actuacion" value="{{ $seg->fecha_actuacion->format('Y-m-d') }}" readonly required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed">
+                        @endif
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de vencimiento</label>

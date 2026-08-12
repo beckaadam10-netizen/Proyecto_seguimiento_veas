@@ -33,15 +33,21 @@ class ClienteController extends Controller
     public function store(Request $request): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
-            'nombre'       => 'required|string|max:100',
-            'apellido'     => 'required|string|max:100',
+            'nombre'       => 'required_if:tipo,persona_fisica|nullable|string|max:100',
+            'apellido'     => 'required_if:tipo,persona_fisica|nullable|string|max:100',
             'dni'          => 'required|string|max:20|unique:clientes,dni',
             'email'        => 'nullable|email|max:150',
             'telefono'     => 'nullable|string|max:30',
             'direccion'    => 'nullable|string|max:255',
             'tipo'         => 'required|in:persona_fisica,persona_juridica',
-            'razon_social' => 'nullable|string|max:200',
+            'razon_social' => 'required_if:tipo,persona_juridica|nullable|string|max:200',
         ]);
+
+        if ($data['tipo'] === 'persona_juridica') {
+            $data['nombre'] = $data['apellido'] = null;
+        } else {
+            $data['razon_social'] = null;
+        }
 
         $cliente = Cliente::create($data);
 
@@ -75,16 +81,22 @@ class ClienteController extends Controller
     public function update(Request $request, Cliente $cliente): RedirectResponse
     {
         $data = $request->validate([
-            'nombre'       => 'required|string|max:100',
-            'apellido'     => 'required|string|max:100',
+            'nombre'       => 'required_if:tipo,persona_fisica|nullable|string|max:100',
+            'apellido'     => 'required_if:tipo,persona_fisica|nullable|string|max:100',
             'dni'          => 'required|string|max:20|unique:clientes,dni,' . $cliente->id,
             'email'        => 'nullable|email|max:150',
             'telefono'     => 'nullable|string|max:30',
             'direccion'    => 'nullable|string|max:255',
             'tipo'         => 'required|in:persona_fisica,persona_juridica',
-            'razon_social' => 'nullable|string|max:200',
+            'razon_social' => 'required_if:tipo,persona_juridica|nullable|string|max:200',
             'activo'       => 'boolean',
         ]);
+
+        if ($data['tipo'] === 'persona_juridica') {
+            $data['nombre'] = $data['apellido'] = null;
+        } else {
+            $data['razon_social'] = null;
+        }
 
         $cliente->update($data);
 
