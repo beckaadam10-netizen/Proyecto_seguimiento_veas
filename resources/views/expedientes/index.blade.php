@@ -40,6 +40,13 @@
             @endforeach
         </select>
     </div>
+    <div>
+        <label class="block text-xs text-gray-500 mb-1">Orden</label>
+        <select name="orden" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="recientes" {{ $orden === 'recientes' ? 'selected' : '' }}>Más recientes primero</option>
+            <option value="antiguos" {{ $orden === 'antiguos' ? 'selected' : '' }}>Más antiguos primero</option>
+        </select>
+    </div>
     <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-700">
         <i class="fas fa-search"></i> Filtrar
     </button>

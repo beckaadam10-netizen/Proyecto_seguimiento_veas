@@ -24,6 +24,8 @@ class ExpedienteController extends Controller
 {
     public function index(Request $request): View
     {
+        $orden = $request->input('orden') === 'antiguos' ? 'antiguos' : 'recientes';
+
         $expedientes = Expediente::with(['cliente', 'partes', 'seguidores', 'estadoExpediente'])
             ->when($request->user()->esCliente(), fn($q) => $q->where('cliente_id', $request->user()->cliente_id))
             ->when($request->buscar,    fn($q) => $q->buscar($request->buscar))
@@ -31,7 +33,7 @@ class ExpedienteController extends Controller
             ->when($request->tipo,      fn($q) => $q->porTipo($request->tipo))
             ->when($request->cliente_id, fn($q) => $q->where('cliente_id', $request->cliente_id))
             ->withCount(['seguimientos', 'audiencias'])
-            ->orderByDesc('created_at')
+            ->orderBy('created_at', $orden === 'antiguos' ? 'asc' : 'desc')
             ->paginate(20)
             ->withQueryString();
 
@@ -42,7 +44,7 @@ class ExpedienteController extends Controller
         $usuarios  = User::whereNull('cliente_id')->where('activo', true)->orderBy('name')->get(['id', 'name']);
         $numero    = Expediente::generarNumero();
 
-        return view('expedientes.index', compact('expedientes', 'estados', 'tipos', 'clientes', 'abogados', 'usuarios', 'numero'));
+        return view('expedientes.index', compact('expedientes', 'estados', 'tipos', 'clientes', 'abogados', 'usuarios', 'numero', 'orden'));
     }
 
     public function create(): View
