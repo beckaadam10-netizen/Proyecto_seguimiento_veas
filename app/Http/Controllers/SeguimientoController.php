@@ -19,6 +19,7 @@ class SeguimientoController extends Controller
     public function index(Request $request): View
     {
         $filtroSeguimiento = $request->tipo_actuacion_id || $request->pasante_id;
+        $ordenExpedientes = $request->input('orden') === 'antiguos' ? 'antiguos' : 'recientes';
 
         $expedientesListado = Expediente::with(['cliente', 'abogado', 'demandantes', 'demandados', 'seguimientos.tipoActuacion'])
             ->when($request->filled('buscar'), fn ($q) => $q->buscar($request->buscar))
@@ -26,7 +27,7 @@ class SeguimientoController extends Controller
                 $qq->when($request->tipo_actuacion_id,fn($q2) => $q2->where('tipo_actuacion_id', $request->tipo_actuacion_id))
                    ->when($request->pasante_id,       fn($q2) => $q2->where('usuario_id', $request->pasante_id));
             }))
-            ->orderByDesc('created_at')
+            ->orderBy('created_at', $ordenExpedientes === 'antiguos' ? 'asc' : 'desc')
             ->paginate(15, ['*'], 'expedientes_page')
             ->withQueryString();
 
@@ -59,7 +60,7 @@ class SeguimientoController extends Controller
             ->where('activo', true)->orderBy('name')->get();
 
         return view('seguimientos.index', compact(
-            'expedientesListado', 'seguimientos', 'seguimientosParaModales',
+            'expedientesListado', 'seguimientos', 'seguimientosParaModales', 'ordenExpedientes',
             'expedientes', 'tramites', 'tiposActuacion', 'tiposDocumento', 'prioridades', 'pasantes'
         ));
     }
