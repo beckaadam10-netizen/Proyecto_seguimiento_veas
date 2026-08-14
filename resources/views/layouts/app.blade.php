@@ -700,6 +700,57 @@
         const colapsado = document.body.classList.toggle('sidebar-collapsed');
         document.cookie = 'sidebar_colapsado=' + (colapsado ? '1' : '0') + ';path=/;max-age=31536000;samesite=lax';
     }
+
+    // Búsqueda en vivo genérica: reemplaza solo un contenedor de resultados por
+    // fetch(), sin recargar la página (evita perder foco/scroll). El controlador
+    // debe devolver, cuando la petición trae el header X-Requested-With, solo el
+    // fragmento de resultados (misma vista parcial que usa la carga normal).
+    function iniciarBusquedaEnVivo({ input, contenedor, url, delay = 300 }) {
+        const inputEl = document.querySelector(input);
+        const contenedorEl = document.getElementById(contenedor);
+        if (!inputEl || !contenedorEl) return;
+
+        let timeout = null;
+        let controller = null;
+
+        function cargar(destino) {
+            if (controller) controller.abort();
+            controller = new AbortController();
+            fetch(destino, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, signal: controller.signal })
+                .then(r => r.text())
+                .then(html => {
+                    contenedorEl.innerHTML = html;
+                    history.replaceState(null, '', destino);
+                    // innerHTML no ejecuta los <script> que traiga el fragmento (ej. los que
+                    // inicializan el estado de cada modal por fila); hay que recrearlos a mano.
+                    contenedorEl.querySelectorAll('script').forEach((scriptViejo) => {
+                        const scriptNuevo = document.createElement('script');
+                        scriptNuevo.textContent = scriptViejo.textContent;
+                        scriptViejo.replaceWith(scriptNuevo);
+                    });
+                })
+                .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+        }
+
+        inputEl.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                const params = new URLSearchParams(window.location.search);
+                params.set('buscar', inputEl.value);
+                params.delete('page');
+                cargar(url + '?' + params.toString());
+            }, delay);
+        });
+
+        // Los links de paginación (dentro de un <nav>, como los genera Laravel) se
+        // cargan en vivo también, sin recargar la página.
+        contenedorEl.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (!link || !link.closest('nav')) return;
+            e.preventDefault();
+            cargar(link.href);
+        });
+    }
 </script>
 
 @stack('scripts')

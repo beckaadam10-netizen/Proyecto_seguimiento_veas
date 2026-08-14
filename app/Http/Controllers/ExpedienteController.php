@@ -44,6 +44,10 @@ class ExpedienteController extends Controller
         $usuarios  = User::whereNull('cliente_id')->where('activo', true)->orderBy('name')->get(['id', 'name']);
         $numero    = Expediente::generarNumero();
 
+        if ($request->ajax()) {
+            return view('expedientes._tabla-expedientes', compact('expedientes', 'estados', 'tipos', 'clientes', 'abogados', 'usuarios'));
+        }
+
         return view('expedientes.index', compact('expedientes', 'estados', 'tipos', 'clientes', 'abogados', 'usuarios', 'numero', 'orden'));
     }
 
