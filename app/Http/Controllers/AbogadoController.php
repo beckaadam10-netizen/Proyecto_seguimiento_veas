@@ -21,6 +21,10 @@ class AbogadoController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        if ($request->ajax()) {
+            return view('abogados._tabla-abogados', compact('abogados'));
+        }
+
         return view('abogados.index', compact('abogados'));
     }
 

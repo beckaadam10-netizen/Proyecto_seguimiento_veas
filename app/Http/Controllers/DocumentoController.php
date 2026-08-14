@@ -47,7 +47,7 @@ class DocumentoController extends Controller
             'expediente_id' => 'required|exists:expedientes,id',
             'titulo'        => 'required|string|max:255',
             'fojas'         => 'nullable|string|max:50',
-            'archivo'       => 'required|file|max:10240|mimes:pdf,doc,docx,jpg,png',
+            'archivo'       => 'required|file|max:1048576|mimes:pdf,doc,docx,jpg,png',
         ]);
 
         $this->autorizarPropioCliente($request, Expediente::findOrFail($data['expediente_id']));
@@ -127,6 +127,10 @@ class DocumentoController extends Controller
             $pagina,
             ['path' => $request->url(), 'query' => $request->query()]
         );
+
+        if ($request->ajax()) {
+            return view('documentos._tabla-documentos', ['registros' => $paginado]);
+        }
 
         return view('documentos.index', [
             'registros'  => $paginado,
