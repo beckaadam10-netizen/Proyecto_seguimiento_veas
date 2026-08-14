@@ -17,7 +17,7 @@
 <form method="GET" id="form-filtros-seguimientos" class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
     <div class="flex-1 min-w-56">
         <label class="block text-xs text-gray-500 mb-1">Buscar expediente (NUREJ o carátula)</label>
-        <input type="text" name="buscar" value="{{ request('buscar') }}" oninput="buscarExpedientesDebounced()"
+        <input type="text" name="buscar" value="{{ request('buscar') }}" oninput="buscarExpedientesEnVivo()"
                {{ request('buscar') ? 'autofocus' : '' }}
                placeholder="Ej: 120/25 o 70595894"
                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
@@ -55,64 +55,8 @@
     </a>
 </form>
 
-<div class="mb-6">
-    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Expedientes</h2>
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Expediente</th>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">NUREJ</th>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Demandante</th>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Demandado</th>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Tipo de proceso</th>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Juzgado</th>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Piso</th>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Dirección</th>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Abogado encargado</th>
-                    <th class="px-4 py-3 text-left font-semibold text-gray-600">Seguimiento</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                @forelse($expedientesListado as $exp)
-                <tr class="hover:bg-gray-50 transition">
-                    <td class="px-4 py-3">
-                        <a href="{{ route('expedientes.show', $exp) }}" class="text-brand-800 hover:underline font-medium">
-                            {{ $exp->caratula }}
-                        </a>
-                        <p class="text-xs text-gray-500">{{ $exp->cliente->nombre_completo }}</p>
-                    </td>
-                    <td class="px-4 py-3 text-gray-600 font-mono text-xs">{{ $exp->numero }}</td>
-                    <td class="px-4 py-3 text-gray-600 text-xs">{{ $exp->demandantes->pluck('nombre')->implode(', ') ?: '—' }}</td>
-                    <td class="px-4 py-3 text-gray-600 text-xs">{{ $exp->demandados->pluck('nombre')->implode(', ') ?: '—' }}</td>
-                    <td class="px-4 py-3 text-gray-600 text-xs">{{ $exp->tipo_proceso ?: '—' }}</td>
-                    <td class="px-4 py-3 text-gray-600 text-xs">{{ $exp->juzgado ?: '—' }}</td>
-                    <td class="px-4 py-3 text-gray-600 text-xs">{{ $exp->piso ?: '—' }}</td>
-                    <td class="px-4 py-3 text-gray-600 text-xs">{{ $exp->direccion ?: '—' }}</td>
-                    <td class="px-4 py-3 text-gray-600 text-xs">{{ $exp->abogado?->nombre ?? '—' }}</td>
-                    <td class="px-4 py-3">
-                        <div class="flex items-center gap-2">
-                            @if(auth()->user()->puede('seguimientos', 'crear'))
-                            <a href="{{ route('seguimientos.index', ['nuevo' => 1, 'expediente_id' => $exp->id]) }}" class="text-xs text-green-600 hover:underline">+ Agregar</a>
-                            @endif
-                            <a href="{{ route('seguimientos.historial', $exp) }}" class="text-xs text-brand-700 hover:underline">Ver historial</a>
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="10" class="px-4 py-10 text-center text-gray-400">
-                        <i class="fas fa-folder-open text-3xl mb-2"></i>
-                        <p>No se encontraron expedientes.</p>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-        </div>
-        <div class="px-4 py-3 border-t">{{ $expedientesListado->links() }}</div>
-    </div>
+<div id="contenedor-tabla-expedientes">
+    @include('seguimientos._tabla-expedientes')
 </div>
 
 <div>
@@ -555,13 +499,49 @@
 
 @push('scripts')
 <script>
+    // Búsqueda en vivo de expedientes: reemplaza solo la tabla (sin recargar toda la
+    // página), para que no se pierda el foco del campo ni la posición del scroll.
     let buscarExpedientesTimeout = null;
-    function buscarExpedientesDebounced() {
+    let buscarExpedientesController = null;
+    const contenedorTablaExpedientes = document.getElementById('contenedor-tabla-expedientes');
+    const urlBaseSeguimientos = @json(route('seguimientos.index'));
+
+    function buscarExpedientesEnVivo() {
         clearTimeout(buscarExpedientesTimeout);
         buscarExpedientesTimeout = setTimeout(() => {
-            document.getElementById('form-filtros-seguimientos').submit();
-        }, 500);
+            const params = new URLSearchParams(window.location.search);
+            params.set('buscar', document.querySelector('input[name="buscar"]').value);
+            params.delete('page');
+            cargarTablaExpedientes(urlBaseSeguimientos + '?' + params.toString());
+        }, 300);
     }
+
+    function cargarTablaExpedientes(url) {
+        if (buscarExpedientesController) buscarExpedientesController.abort();
+        buscarExpedientesController = new AbortController();
+
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            signal: buscarExpedientesController.signal,
+        })
+            .then(r => r.text())
+            .then(html => {
+                contenedorTablaExpedientes.innerHTML = html;
+                history.replaceState(null, '', url);
+            })
+            .catch(err => {
+                if (err.name !== 'AbortError') console.error(err);
+            });
+    }
+
+    // Los links de paginación de la tabla de expedientes (dentro de un <nav>, como
+    // los genera Laravel) también se cargan en vivo, sin recargar la página.
+    contenedorTablaExpedientes.addEventListener('click', function (e) {
+        const link = e.target.closest('a');
+        if (!link || !link.closest('nav')) return;
+        e.preventDefault();
+        cargarTablaExpedientes(link.href);
+    });
 
     @if($errors->any() && old('_modal'))
         abrirModal(@json(old('_modal')));

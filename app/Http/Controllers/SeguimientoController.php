@@ -31,6 +31,12 @@ class SeguimientoController extends Controller
             ->paginate(15, ['*'], 'expedientes_page')
             ->withQueryString();
 
+        // Búsqueda en vivo: el JS de la vista pide esto por fetch() y reemplaza solo
+        // la tabla, así que alcanza con la tabla sola, sin cargar el resto de la pantalla.
+        if ($request->ajax()) {
+            return view('seguimientos._tabla-expedientes', compact('expedientesListado'));
+        }
+
         $seguimientos = Seguimiento::with(['tramite.cliente', 'usuario.rol', 'tipoActuacion', 'gasto', 'gastos'])
             ->whereNotNull('tramite_id')
             ->when($request->tipo_actuacion_id,fn($q) => $q->where('tipo_actuacion_id', $request->tipo_actuacion_id))
