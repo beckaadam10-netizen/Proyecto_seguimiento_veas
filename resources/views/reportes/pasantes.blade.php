@@ -201,12 +201,6 @@
                        class="text-xs text-brand-700 hover:underline font-medium mr-3">
                         <i class="fas fa-file-invoice"></i> Generar PDF cliente
                     </a>
-                    @if($periodo->whatsappUrlSeguimiento)
-                    <a href="{{ $periodo->whatsappUrlSeguimiento }}" target="_blank"
-                       class="text-xs text-emerald-600 hover:underline font-medium mr-3">
-                        <i class="fab fa-whatsapp"></i> Enviar por WhatsApp
-                    </a>
-                    @endif
                     <form method="POST" action="{{ route('reportes.pasantes.revisado', $periodo) }}" class="inline">
                         @csrf @method('PATCH')
                         <button type="submit" class="text-xs text-green-600 hover:text-green-800 font-medium mr-3">
@@ -284,12 +278,6 @@
                        class="text-xs text-brand-700 hover:underline font-medium mr-3">
                         <i class="fas fa-file-invoice"></i> Generar PDF cliente
                     </a>
-                    @if($periodo->whatsappUrlSeguimiento)
-                    <a href="{{ $periodo->whatsappUrlSeguimiento }}" target="_blank"
-                       class="text-xs text-emerald-600 hover:underline font-medium mr-3">
-                        <i class="fab fa-whatsapp"></i> Enviar por WhatsApp
-                    </a>
-                    @endif
                     <form method="POST" action="{{ route('reportes.pasantes.destroy', $periodo) }}" class="inline" onsubmit="return confirm('¿Eliminar este reporte? Esta acción no se puede deshacer.')">
                         @csrf @method('DELETE')
                         <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-medium">
