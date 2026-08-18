@@ -56,7 +56,10 @@
                         </ul>
                     </dd>
                 </div>
-                @else
+                @elseif($seguimiento->descripcion !== $seguimiento->observaciones)
+                {{-- Cuando no hay gastos, la descripción se genera automáticamente a partir de las
+                     observaciones (ver generarDescripcion() en SeguimientoController): si coinciden,
+                     mostrar las dos sería repetir el mismo texto dos veces en la pantalla. --}}
                 <div>
                     <dt class="text-gray-500 mb-1">Descripción</dt>
                     <dd class="text-gray-800 whitespace-pre-line">{{ $seguimiento->descripcion }}</dd>
