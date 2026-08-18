@@ -69,6 +69,12 @@
                     <i class="fas fa-check-circle text-green-500 mr-1"></i>
                     {{ $seg->revisado_at?->format('d/m/Y H:i') }}
                 </span>
+                @if($seg->whatsapp_url_revision)
+                <a href="{{ $seg->whatsapp_url_revision }}" target="_blank"
+                   class="text-xs text-emerald-600 hover:underline font-medium whitespace-nowrap" title="Enviar por WhatsApp">
+                    <i class="fab fa-whatsapp"></i> WhatsApp
+                </a>
+                @endif
             @endif
         </div>
     </td>

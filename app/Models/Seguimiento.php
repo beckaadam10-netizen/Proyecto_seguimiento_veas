@@ -135,4 +135,30 @@ class Seguimiento extends Model
             default       => 'fa-file',
         };
     }
+
+    // Link de WhatsApp con el detalle de esta actuación y, debajo, el link de rastreo
+    // público ya cargado con nombre y DNI del cliente (para que no tenga que volver a
+    // tipearlos al abrirlo). Null si el cliente no tiene teléfono cargado.
+    public function getWhatsappUrlRevisionAttribute(): ?string
+    {
+        $cliente = $this->cliente;
+
+        if (! $cliente || ! $cliente->telefono_whatsapp) {
+            return null;
+        }
+
+        $linkRastreo = route('rastreo.index', ['nombre' => $cliente->nombre_completo, 'dni' => $cliente->dni]);
+
+        $texto = "Hola {$cliente->nombre_completo}, te compartimos el seguimiento realizado en tu caso el "
+            . $this->fecha_actuacion->format('d/m/Y') . ": \"{$this->titulo}\""
+            . ($this->usuario ? " (realizado por {$this->usuario->name})." : '.');
+
+        if ($this->observaciones) {
+            $texto .= "\n\n{$this->observaciones}";
+        }
+
+        $texto .= "\n\nPodés ver el detalle completo y el estado actual de tu caso acá:\n{$linkRastreo}";
+
+        return 'https://wa.me/' . $cliente->telefono_whatsapp . '?text=' . rawurlencode($texto);
+    }
 }
