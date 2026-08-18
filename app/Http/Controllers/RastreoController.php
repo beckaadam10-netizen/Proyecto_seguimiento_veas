@@ -15,8 +15,15 @@ use Illuminate\View\View;
 // el nombre es solo un segundo factor de verificación.
 class RastreoController extends Controller
 {
-    public function index(): View
+    // Cuando el link trae nombre y DNI (ej. el que se manda por WhatsApp desde el
+    // reporte de pasantes), busca directo, sin que el cliente tenga que volver a
+    // tipearlos.
+    public function index(Request $request): View
     {
+        if ($request->filled('nombre') && $request->filled('dni')) {
+            return $this->buscar($request);
+        }
+
         return view('welcome');
     }
 

@@ -201,6 +201,12 @@
                        class="text-xs text-brand-700 hover:underline font-medium mr-3">
                         <i class="fas fa-file-invoice"></i> Generar PDF cliente
                     </a>
+                    @if($periodo->whatsappUrlSeguimiento)
+                    <a href="{{ $periodo->whatsappUrlSeguimiento }}" target="_blank"
+                       class="text-xs text-emerald-600 hover:underline font-medium mr-3">
+                        <i class="fab fa-whatsapp"></i> Enviar por WhatsApp
+                    </a>
+                    @endif
                     <form method="POST" action="{{ route('reportes.pasantes.revisado', $periodo) }}" class="inline">
                         @csrf @method('PATCH')
                         <button type="submit" class="text-xs text-green-600 hover:text-green-800 font-medium">
@@ -269,9 +275,15 @@
                     </a>
                     @if(!$esPasante)
                     <a href="{{ route('reportes.pasantes.ver-cliente', $periodo) }}" target="_blank"
-                       class="text-xs text-brand-700 hover:underline font-medium">
+                       class="text-xs text-brand-700 hover:underline font-medium mr-3">
                         <i class="fas fa-file-invoice"></i> Generar PDF cliente
                     </a>
+                    @if($periodo->whatsappUrlSeguimiento)
+                    <a href="{{ $periodo->whatsappUrlSeguimiento }}" target="_blank"
+                       class="text-xs text-emerald-600 hover:underline font-medium">
+                        <i class="fab fa-whatsapp"></i> Enviar por WhatsApp
+                    </a>
+                    @endif
                     @endif
                 </td>
             </tr>

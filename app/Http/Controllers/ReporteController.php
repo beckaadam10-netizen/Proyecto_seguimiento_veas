@@ -533,14 +533,48 @@ class ReporteController extends Controller
     // mostrarla en el historial (un período puede abarcar más de un caso).
     private function conCasosDelPeriodo(ReportePasanteGenerado $periodo): ReportePasanteGenerado
     {
-        $periodo->casos = $this->gastosDelPeriodo($periodo)
+        $gastos = $this->gastosDelPeriodo($periodo);
+
+        $periodo->casos = $gastos
             ->map(fn (Gasto $g) => $g->expediente_id
                 ? ($g->expediente ? "{$g->expediente->numero} — {$g->expediente->caratula}" : 'Expediente eliminado')
                 : ($g->tramite ? "{$g->tramite->codigo} — {$g->tramite->nombre}" : 'Trámite eliminado'))
             ->unique()
             ->values();
 
+        // Solo se puede mandar el link de WhatsApp cuando TODO el período es de un mismo
+        // cliente (si mezcla varios, no hay a quién mandárselo desde acá).
+        $clientes = $gastos
+            ->map(fn (Gasto $g) => $g->expediente?->cliente ?? $g->tramite?->cliente)
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        $periodo->clienteUnico = $clientes->count() === 1 ? $clientes->first() : null;
+        $periodo->whatsappUrlSeguimiento = $this->whatsappUrlSeguimiento($periodo);
+
         return $periodo;
+    }
+
+    // Link de WhatsApp con el seguimiento del período y, debajo, el link de rastreo
+    // público ya cargado con nombre y DNI del cliente (para que no tenga que
+    // volver a tipearlos al abrirlo).
+    private function whatsappUrlSeguimiento(ReportePasanteGenerado $periodo): ?string
+    {
+        $cliente = $periodo->clienteUnico;
+
+        if (! $cliente || ! $cliente->telefono_whatsapp) {
+            return null;
+        }
+
+        $linkRastreo = route('rastreo.index', ['nombre' => $cliente->nombre_completo, 'dni' => $cliente->dni]);
+
+        $texto = "Hola {$cliente->nombre_completo}, te compartimos el seguimiento de tu caso realizado entre el "
+            . $periodo->desde->format('d/m/Y') . ' y el ' . $periodo->hasta->format('d/m/Y')
+            . " (total: " . number_format((float) $periodo->total, 2) . " Bs).\n\n"
+            . "Podés ver el detalle completo y el estado actual de tu caso acá:\n{$linkRastreo}";
+
+        return 'https://wa.me/' . $cliente->telefono_whatsapp . '?text=' . rawurlencode($texto);
     }
 
     private function queryGastosPasante(Request $request): Builder
