@@ -199,17 +199,41 @@ class SeguimientoController extends Controller
     // expediente — junta lo de todos los expedientes y trámites en un solo lugar.
     public function historialGlobal(Request $request): View
     {
+        $filtrar = function ($query) use ($request) {
+            $query
+                ->when($request->filled('pasante_id'), fn ($q) => $q->where('usuario_id', $request->pasante_id))
+                ->when($request->filled('tipo_actuacion_id'), fn ($q) => $q->where('tipo_actuacion_id', $request->tipo_actuacion_id))
+                ->when($request->filled('buscar'), function ($q) use ($request) {
+                    $termino = $request->buscar;
+                    $q->where(function ($qq) use ($termino) {
+                        $qq->whereHas('expediente', fn ($e) => $e->buscar($termino))
+                           ->orWhereHas('tramite', fn ($t) => $t->where('codigo', 'like', "%{$termino}%")
+                                                                 ->orWhere('nombre', 'like', "%{$termino}%"));
+                    });
+                });
+        };
+
         $seguimientosSinRevisar = Seguimiento::with(['expediente.cliente', 'tramite.cliente', 'tipoActuacion', 'usuario.rol', 'gastos'])
             ->where('revisado', false)
+            ->tap($filtrar)
             ->orderByDesc('fecha_actuacion')
-            ->paginate(20, ['*'], 'sin_revisar_page');
+            ->paginate(20, ['*'], 'sin_revisar_page')
+            ->withQueryString();
 
         $seguimientosRevisados = Seguimiento::with(['expediente.cliente', 'tramite.cliente', 'tipoActuacion', 'usuario.rol', 'gastos'])
             ->where('revisado', true)
+            ->tap($filtrar)
             ->orderByDesc('revisado_at')
-            ->paginate(20, ['*'], 'revisados_page');
+            ->paginate(20, ['*'], 'revisados_page')
+            ->withQueryString();
 
-        return view('seguimientos.historial-global', compact('seguimientosSinRevisar', 'seguimientosRevisados'));
+        $tiposActuacion = TipoActuacion::activos()->orderBy('nombre')->get();
+        $pasantes = User::whereIn('id', Seguimiento::whereNotNull('usuario_id')->distinct()->pluck('usuario_id'))
+            ->orderBy('name')->get();
+
+        return view('seguimientos.historial-global', compact(
+            'seguimientosSinRevisar', 'seguimientosRevisados', 'tiposActuacion', 'pasantes'
+        ));
     }
 
     public function show(Request $request, Seguimiento $seguimiento): View

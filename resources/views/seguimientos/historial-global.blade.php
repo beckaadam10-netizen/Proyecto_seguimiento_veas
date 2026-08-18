@@ -5,6 +5,39 @@
 
 @section('content')
 
+<form method="GET" class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
+    <div class="flex-1 min-w-56">
+        <label class="block text-xs text-gray-500 mb-1">Buscar expediente/trámite (NUREJ, carátula, código)</label>
+        <input type="text" name="buscar" value="{{ request('buscar') }}"
+               placeholder="Ej: 120/25 o 70595894"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+    </div>
+    <div>
+        <label class="block text-xs text-gray-500 mb-1">Tipo</label>
+        <select name="tipo_actuacion_id" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="">Todos</option>
+            @foreach($tiposActuacion as $t)
+                <option value="{{ $t->id }}" {{ request('tipo_actuacion_id') == $t->id ? 'selected' : '' }}>{{ $t->nombre }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div>
+        <label class="block text-xs text-gray-500 mb-1">Pasante</label>
+        <select name="pasante_id" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="">Todos</option>
+            @foreach($pasantes as $p)
+                <option value="{{ $p->id }}" {{ request('pasante_id') == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
+            @endforeach
+        </select>
+    </div>
+    <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-700">
+        <i class="fas fa-search"></i> Filtrar
+    </button>
+    <a href="{{ route('historial-revision.index') }}" class="text-gray-500 text-sm py-2 hover:text-gray-700">
+        <i class="fas fa-times"></i> Limpiar
+    </a>
+</form>
+
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
     <div class="px-4 py-3 border-b bg-gray-50">
         <h3 class="font-semibold text-gray-700">
