@@ -203,14 +203,8 @@
                     </a>
                     <form method="POST" action="{{ route('reportes.pasantes.revisado', $periodo) }}" class="inline">
                         @csrf @method('PATCH')
-                        <button type="submit" class="text-xs text-green-600 hover:text-green-800 font-medium mr-3">
+                        <button type="submit" class="text-xs text-green-600 hover:text-green-800 font-medium">
                             <i class="fas fa-check"></i> Marcar revisado
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('reportes.pasantes.destroy', $periodo) }}" class="inline" onsubmit="return confirm('¿Eliminar este reporte? Esta acción no se puede deshacer.')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-medium">
-                            <i class="fas fa-trash"></i> Eliminar
                         </button>
                     </form>
                     @endif

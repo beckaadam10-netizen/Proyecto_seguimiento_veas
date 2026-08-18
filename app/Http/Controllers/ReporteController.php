@@ -410,11 +410,13 @@ class ReporteController extends Controller
     }
 
     // Solo administración puede borrar un período generado (el Pasante no debería poder
-    // hacer desaparecer su propio reporte). No borra gastos: el período es solo el
-    // "recorte" administrativo de un rango de fechas, los gastos siguen intactos.
+    // hacer desaparecer su propio reporte), y solo una vez que ya fue revisado (mientras
+    // está pendiente, sigue siendo el respaldo de que ese trabajo se hizo). No borra
+    // gastos: el período es solo el "recorte" administrativo de un rango de fechas.
     public function pasantesDestroy(ReportePasanteGenerado $reportePasanteGenerado): RedirectResponse
     {
         abort_if($this->esPasante(), 403);
+        abort_unless($reportePasanteGenerado->revisado, 403);
 
         $reportePasanteGenerado->delete();
 
