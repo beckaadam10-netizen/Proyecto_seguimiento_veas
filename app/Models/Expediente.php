@@ -208,4 +208,26 @@ class Expediente extends Model
             default     => 'gray',
         };
     }
+
+    // Link de WhatsApp con todas las actualizaciones del caso (una por línea, más
+    // reciente primero) y, debajo, el link de rastreo público ya cargado con nombre
+    // y DNI del cliente. Null si no tiene actualizaciones o el cliente no tiene teléfono.
+    public function getWhatsappUrlActualizacionesAttribute(): ?string
+    {
+        if (! $this->cliente || ! $this->cliente->telefono_whatsapp || $this->actualizaciones->isEmpty()) {
+            return null;
+        }
+
+        $linkRastreo = route('rastreo.index', ['nombre' => $this->cliente->nombre_completo, 'dni' => $this->cliente->dni]);
+
+        $lista = $this->actualizaciones
+            ->map(fn (ActualizacionExpediente $act) => '• ' . $act->created_at->format('d/m/Y') . ': ' . $act->texto)
+            ->implode("\n");
+
+        $texto = "Hola {$this->cliente->nombre_completo}, te compartimos las actualizaciones de tu caso ({$this->caratula}):\n\n"
+            . "{$lista}\n\n"
+            . "Podés ver el detalle completo y el estado actual de tu caso acá:\n{$linkRastreo}";
+
+        return 'https://wa.me/' . $this->cliente->telefono_whatsapp . '?text=' . rawurlencode($texto);
+    }
 }

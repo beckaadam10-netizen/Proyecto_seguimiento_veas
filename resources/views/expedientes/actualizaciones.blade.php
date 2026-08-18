@@ -24,6 +24,12 @@
             <i class="fas fa-comment-dots text-blue-500 mr-2"></i>
             Todas las actualizaciones ({{ $expediente->actualizaciones->count() }})
         </h3>
+        @if($expediente->whatsapp_url_actualizaciones)
+        <a href="{{ $expediente->whatsapp_url_actualizaciones }}" target="_blank"
+           class="bg-[#25D366] hover:bg-[#1ebe57] text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+            <i class="fab fa-whatsapp"></i> Enviar por WhatsApp
+        </a>
+        @endif
     </div>
     @if(auth()->user()->puede('actualizaciones', 'crear'))
     <form method="POST" action="{{ route('expedientes.actualizaciones.store', $expediente) }}" class="p-5 border-b flex gap-2 items-start">
