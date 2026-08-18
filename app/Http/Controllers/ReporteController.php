@@ -409,6 +409,18 @@ class ReporteController extends Controller
         return back()->with('success', 'PDF marcado como revisado.');
     }
 
+    // Solo administración puede borrar un período generado (el Pasante no debería poder
+    // hacer desaparecer su propio reporte). No borra gastos: el período es solo el
+    // "recorte" administrativo de un rango de fechas, los gastos siguen intactos.
+    public function pasantesDestroy(ReportePasanteGenerado $reportePasanteGenerado): RedirectResponse
+    {
+        abort_if($this->esPasante(), 403);
+
+        $reportePasanteGenerado->delete();
+
+        return back()->with('success', 'Reporte eliminado.');
+    }
+
     // El bloqueo de períodos (para no cobrar dos veces a administración) rige solo para
     // el rol Pasante. Un administrador puede filtrar y generar el reporte libremente,
     // sin necesidad de elegir un rango de fechas ni riesgo de que se le bloquee.

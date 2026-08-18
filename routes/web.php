@@ -292,6 +292,10 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
              ->withoutMiddleware('permission:reportes.ver')
              ->middleware('permission:reportes.pasantes')
              ->name('pasantes.revisado');
+        Route::delete('/pasantes/{reportePasanteGenerado}', [ReporteController::class, 'pasantesDestroy'])
+             ->withoutMiddleware('permission:reportes.ver')
+             ->middleware('permission:reportes.pasantes')
+             ->name('pasantes.destroy');
     });
 
 });
