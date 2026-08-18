@@ -150,8 +150,7 @@ class Seguimiento extends Model
         $linkRastreo = route('rastreo.index', ['nombre' => $cliente->nombre_completo, 'dni' => $cliente->dni]);
 
         $texto = "Hola {$cliente->nombre_completo}, te compartimos el seguimiento realizado en tu caso el "
-            . $this->fecha_actuacion->format('d/m/Y') . ": \"{$this->titulo}\""
-            . ($this->usuario ? " (realizado por {$this->usuario->name})." : '.');
+            . $this->fecha_actuacion->format('d/m/Y') . ": \"{$this->titulo}\".";
 
         if ($this->observaciones) {
             $texto .= "\n\n{$this->observaciones}";
