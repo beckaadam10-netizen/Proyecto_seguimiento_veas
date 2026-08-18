@@ -31,6 +31,7 @@ class Permiso extends Model
         'tramites'       => ['label' => 'Trámites', 'icon' => 'fa-file-circle-check'],
         'gastos_cobros'  => ['label' => 'Gastos y Cobros', 'icon' => 'fa-hand-holding-dollar'],
         'seguimientos'   => ['label' => 'Seguimientos', 'icon' => 'fa-list-check'],
+        'historial_revision' => ['label' => 'Historial de Revisión', 'icon' => 'fa-clipboard-check'],
         'actualizaciones'=> ['label' => 'Actualizaciones', 'icon' => 'fa-comment-dots'],
         'audiencias'     => ['label' => 'Audiencias', 'icon' => 'fa-gavel'],
         'documentos'     => ['label' => 'Documentos', 'icon' => 'fa-folder-open'],

@@ -142,6 +142,7 @@
             $vTramites      = $u->puede('tramites');
             $vGastosCobros  = $u->puede('gastos_cobros');
             $vSeguimientos  = $u->puede('seguimientos');
+            $vHistorialRevision = $u->puede('historial_revision');
             $vAudiencias    = $u->puede('audiencias');
             $vParametros    = $u->puede('parametros');
             $vAdministracion= $u->puede('administracion');
@@ -205,7 +206,7 @@
             </div>
             @endif
 
-            @if($vSeguimientos || $vAudiencias)
+            @if($vSeguimientos || $vAudiencias || $vHistorialRevision)
             <div class="pt-3 sidebar-grouptitle">
                 <button type="button" onclick="toggleGrupo('seguimiento')"
                         class="w-full flex items-center justify-between px-3 py-1 text-xs uppercase text-brand-500 font-semibold tracking-wider hover:text-brand-300 transition">
@@ -226,6 +227,13 @@
                 <a href="{{ route('audiencias.index') }}" title="Audiencias"
                    class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-stone-300 hover:bg-brand-800 hover:text-brand-300 transition {{ request()->routeIs('audiencias.*') ? 'active' : '' }}">
                     <i class="fas fa-gavel w-5 text-center"></i> Audiencias
+                </a>
+                @endif
+
+                @if($vHistorialRevision)
+                <a href="{{ route('historial-revision.index') }}" title="Historial de Revisión"
+                   class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-stone-300 hover:bg-brand-800 hover:text-brand-300 transition {{ request()->routeIs('historial-revision.*') ? 'active' : '' }}">
+                    <i class="fas fa-clipboard-check w-5 text-center"></i> Historial de Revisión
                 </a>
                 @endif
 

@@ -2,6 +2,8 @@
     Fila de la tabla de historial de seguimiento.
     Requiere: $seg (Seguimiento), $conBotonRevisar (bool: true = lista "sin revisar", muestra el botón;
     false = lista "ya revisados", muestra la fecha en que se revisó).
+    Opcional: $conExpediente (bool, default false) = agrega una columna con el expediente/trámite
+    al que pertenece, para usar en el historial de revisión global (todos juntos).
 --}}
 <tr class="hover:bg-gray-50 transition {{ $seg->estaVencido() ? 'bg-red-50' : '' }}">
     <td class="px-4 py-3">
@@ -10,6 +12,18 @@
         </div>
     </td>
     <td class="px-4 py-3 text-gray-600 text-sm whitespace-nowrap">{{ $seg->fecha_actuacion->format('d/m/Y') }}</td>
+    @if($conExpediente ?? false)
+    <td class="px-4 py-3 text-sm">
+        @if($seg->expediente)
+            <a href="{{ route('expedientes.show', $seg->expediente) }}" class="text-brand-700 hover:underline">{{ $seg->expediente->caratula }}</a>
+        @elseif($seg->tramite)
+            <a href="{{ route('tramites.show', $seg->tramite) }}" class="text-brand-700 hover:underline">{{ $seg->tramite->descripcion ?? ('Trámite #' . $seg->tramite->id) }}</a>
+        @else
+            <span class="text-gray-400">—</span>
+        @endif
+        <p class="text-xs text-gray-400">{{ $seg->cliente?->nombre_completo }}</p>
+    </td>
+    @endif
     <td class="px-4 py-3 text-gray-600 text-sm">{{ $seg->tipoActuacion?->nombre ?? '—' }}</td>
     <td class="px-4 py-3">
         @if($seg->observaciones)

@@ -195,6 +195,23 @@ class SeguimientoController extends Controller
         return back()->with('success', 'Seguimiento marcado como revisado.');
     }
 
+    // Historial de revisión global: igual que historial(), pero sin limitarse a un
+    // expediente — junta lo de todos los expedientes y trámites en un solo lugar.
+    public function historialGlobal(Request $request): View
+    {
+        $seguimientosSinRevisar = Seguimiento::with(['expediente.cliente', 'tramite.cliente', 'tipoActuacion', 'usuario.rol', 'gastos'])
+            ->where('revisado', false)
+            ->orderByDesc('fecha_actuacion')
+            ->paginate(20, ['*'], 'sin_revisar_page');
+
+        $seguimientosRevisados = Seguimiento::with(['expediente.cliente', 'tramite.cliente', 'tipoActuacion', 'usuario.rol', 'gastos'])
+            ->where('revisado', true)
+            ->orderByDesc('revisado_at')
+            ->paginate(20, ['*'], 'revisados_page');
+
+        return view('seguimientos.historial-global', compact('seguimientosSinRevisar', 'seguimientosRevisados'));
+    }
+
     public function show(Request $request, Seguimiento $seguimiento): View
     {
         $this->autorizarPropioCliente($request, $seguimiento->expediente ?? $seguimiento->tramite ?? abort(403));

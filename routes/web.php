@@ -147,6 +147,9 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     Route::patch('seguimientos/{seguimiento}/revisado', [SeguimientoController::class, 'marcarRevisado'])
          ->middleware('permission:seguimientos.modificar')
          ->name('seguimientos.revisado');
+    Route::get('historial-revision', [SeguimientoController::class, 'historialGlobal'])
+         ->middleware('permission:historial_revision.ver')
+         ->name('historial-revision.index');
 
     // Documentos: listado (archivos adjuntos de actuaciones + documentos sueltos por expediente)
     Route::get('documentos', [DocumentoController::class, 'index'])
