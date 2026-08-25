@@ -255,7 +255,7 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
          ->middleware('permission:bitacora.ver')
          ->name('bitacora.index');
     Route::delete('bitacora/limpiar', [BitacoraController::class, 'limpiar'])
-         ->middleware('permission:bitacora.ver')
+         ->middleware('permission:bitacora.eliminar')
          ->name('bitacora.limpiar');
 
     // Reportes
