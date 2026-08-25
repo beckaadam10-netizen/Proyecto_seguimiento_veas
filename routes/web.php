@@ -145,7 +145,7 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
          ->middleware('permission:seguimientos.ver')
          ->name('seguimientos.historial');
     Route::patch('seguimientos/{seguimiento}/revisado', [SeguimientoController::class, 'marcarRevisado'])
-         ->middleware('permission:seguimientos.modificar')
+         ->middleware('permission:seguimientos.revisar')
          ->name('seguimientos.revisado');
     Route::get('historial-revision', [SeguimientoController::class, 'historialGlobal'])
          ->middleware('permission:historial_revision.ver')

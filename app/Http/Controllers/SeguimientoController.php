@@ -188,7 +188,7 @@ class SeguimientoController extends Controller
 
     public function marcarRevisado(Seguimiento $seguimiento): RedirectResponse
     {
-        abort_unless(in_array(auth()->user()->rol?->nombre, ['Abogado', 'Administrador']), 403);
+        abort_unless(auth()->user()->puede('seguimientos', 'revisar'), 403);
 
         $seguimiento->update(['revisado' => true, 'revisado_at' => now()]);
 

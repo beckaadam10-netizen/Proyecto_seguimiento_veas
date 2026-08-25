@@ -44,14 +44,17 @@ class Permiso extends Model
     // Acciones que existen en todo el sistema. No todos los módulos tienen todas: por ejemplo
     // "cobrar" solo aplica a Gastos y Cobros, "descargar" solo a Documentos, "pasantes"
     // solo a Reportes (Reporte Pasantes, separado de "ver" para poder dárselo aparte del
-    // resto de los reportes), y "modificar_fecha" solo a Seguimientos (poder elegir la
-    // fecha de actuación al registrar/editar, en vez de que quede fija en hoy) — en la
-    // matriz esas celdas quedan vacías (agrupadosPorModulo() solo arma las que existen).
+    // resto de los reportes), "modificar_fecha" solo a Seguimientos (poder elegir la
+    // fecha de actuación al registrar/editar, en vez de que quede fija en hoy), y "revisar"
+    // también solo a Seguimientos (marcar una actuación como revisada en Historial de
+    // Revisión) — en la matriz esas celdas quedan vacías (agrupadosPorModulo() solo arma
+    // las que existen).
     public const ACCIONES = [
         'ver'             => 'Ver',
         'crear'           => 'Crear',
         'modificar'       => 'Modificar',
         'modificar_fecha' => 'Modif. Fecha',
+        'revisar'         => 'Revisar',
         'cobrar'          => 'Cobrar',
         'descargar'       => 'Descargar',
         'pasantes'        => 'Rep. Pasantes',

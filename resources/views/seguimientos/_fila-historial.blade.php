@@ -56,7 +56,7 @@
             </a>
             @endif
             @if($conBotonRevisar)
-                @if(in_array(auth()->user()->rol?->nombre, ['Abogado', 'Administrador']))
+                @if(auth()->user()->puede('seguimientos', 'revisar'))
                 <form method="POST" action="{{ route('seguimientos.revisado', $seg) }}">
                     @csrf @method('PATCH')
                     <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
