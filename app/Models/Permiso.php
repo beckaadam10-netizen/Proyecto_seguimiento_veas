@@ -42,18 +42,20 @@ class Permiso extends Model
     ];
 
     // Acciones que existen en todo el sistema. No todos los módulos tienen todas: por ejemplo
-    // "cobrar" solo aplica a Gastos y Cobros, "descargar" solo a Documentos, y "pasantes"
+    // "cobrar" solo aplica a Gastos y Cobros, "descargar" solo a Documentos, "pasantes"
     // solo a Reportes (Reporte Pasantes, separado de "ver" para poder dárselo aparte del
-    // resto de los reportes) — en la matriz esas celdas quedan vacías (agrupadosPorModulo()
-    // solo arma las que existen).
+    // resto de los reportes), y "modificar_fecha" solo a Seguimientos (poder elegir la
+    // fecha de actuación al registrar/editar, en vez de que quede fija en hoy) — en la
+    // matriz esas celdas quedan vacías (agrupadosPorModulo() solo arma las que existen).
     public const ACCIONES = [
-        'ver'        => 'Ver',
-        'crear'      => 'Crear',
-        'modificar'  => 'Modificar',
-        'cobrar'     => 'Cobrar',
-        'descargar'  => 'Descargar',
-        'pasantes'   => 'Rep. Pasantes',
-        'eliminar'   => 'Eliminar',
+        'ver'             => 'Ver',
+        'crear'           => 'Crear',
+        'modificar'       => 'Modificar',
+        'modificar_fecha' => 'Modif. Fecha',
+        'cobrar'          => 'Cobrar',
+        'descargar'       => 'Descargar',
+        'pasantes'        => 'Rep. Pasantes',
+        'eliminar'        => 'Eliminar',
     ];
 
     public function roles(): BelongsToMany

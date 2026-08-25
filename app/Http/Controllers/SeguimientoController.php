@@ -94,7 +94,7 @@ class SeguimientoController extends Controller
             'notificar_cliente' => 'boolean',
         ]);
 
-        if (! auth()->user()->esAdmin()) {
+        if (! auth()->user()->puede('seguimientos', 'modificar_fecha')) {
             $data['fecha_actuacion'] = today()->format('Y-m-d');
         }
 
@@ -265,7 +265,7 @@ class SeguimientoController extends Controller
             'tipo_documento_id' => 'nullable|exists:tipos_documento,id',
         ]);
 
-        if (! auth()->user()->esAdmin()) {
+        if (! auth()->user()->puede('seguimientos', 'modificar_fecha')) {
             $data['fecha_actuacion'] = $seguimiento->fecha_actuacion->format('Y-m-d');
         }
 
