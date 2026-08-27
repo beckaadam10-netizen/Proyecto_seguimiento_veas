@@ -76,6 +76,14 @@
                 </a>
                 @endif
             @endif
+            @if(auth()->user()->puede('seguimientos', 'eliminar'))
+            <form method="POST" action="{{ route('seguimientos.destroy', $seg) }}" onsubmit="return confirm('¿Eliminar esta actuación?')">
+                @csrf @method('DELETE')
+                <button type="submit" class="text-gray-400 hover:text-red-600" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </form>
+            @endif
         </div>
     </td>
 </tr>
