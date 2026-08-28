@@ -197,7 +197,7 @@
                                             data-cliente-nombre="{{ $exp->cliente->nombre_completo }}"
                                             data-cliente-whatsapp="{{ $exp->cliente->telefono_whatsapp }}"
                                             data-demandados="{{ $exp->demandados->pluck('nombre')->implode(', ') }}">
-                                        {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} | {{ Str::limit($exp->caratula, 40) }}
+                                        {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} | {{ Str::limit($exp->caratula, 40) }} ({{ $exp->abogado->nombre ?? 'sin abogado' }})
                                     </option>
                                 @endforeach
                             </select>
@@ -346,7 +346,7 @@
                                 <option value="">— Ningún expediente —</option>
                                 @foreach($expedientes as $exp)
                                     <option value="{{ $exp->id }}" {{ $seg->expediente_id == $exp->id ? 'selected' : '' }}>
-                                        {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }}
+                                        {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} ({{ $exp->abogado->nombre ?? 'sin abogado' }})
                                     </option>
                                 @endforeach
                             </select>

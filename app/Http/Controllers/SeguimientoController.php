@@ -57,7 +57,7 @@ class SeguimientoController extends Controller
             ? $seguimientos->concat([$seguimientoEditar])
             : $seguimientos;
 
-        $expedientes    = Expediente::with(['cliente', 'demandados'])->activos()->orderByDesc('created_at')->get();
+        $expedientes    = Expediente::with(['cliente', 'demandados', 'abogado'])->activos()->orderByDesc('created_at')->get();
         $tramites       = Tramite::with('cliente')->activos()->orderByDesc('created_at')->get();
         $tiposActuacion = TipoActuacion::activos()->orderBy('nombre')->get();
         $tiposDocumento = TipoDocumento::activos()->orderBy('nombre')->get();
@@ -75,7 +75,7 @@ class SeguimientoController extends Controller
     {
         $expediente_id  = $request->expediente_id;
         $tramite_id     = $request->tramite_id;
-        $expedientes    = Expediente::with(['cliente', 'demandados'])->activos()->orderByDesc('created_at')->get();
+        $expedientes    = Expediente::with(['cliente', 'demandados', 'abogado'])->activos()->orderByDesc('created_at')->get();
         $tramites       = Tramite::with('cliente')->activos()->orderByDesc('created_at')->get();
         $tiposActuacion = TipoActuacion::activos()->orderBy('nombre')->get();
         $tiposDocumento = TipoDocumento::activos()->orderBy('nombre')->get();
@@ -246,7 +246,7 @@ class SeguimientoController extends Controller
 
     public function edit(Seguimiento $seguimiento): View
     {
-        $expedientes    = Expediente::with(['cliente', 'demandados'])->activos()->orderByDesc('created_at')->get();
+        $expedientes    = Expediente::with(['cliente', 'demandados', 'abogado'])->activos()->orderByDesc('created_at')->get();
         $tramites       = Tramite::with('cliente')->activos()->orderByDesc('created_at')->get();
         $tiposActuacion = TipoActuacion::activos()->orderBy('nombre')->get();
         $tiposDocumento = TipoDocumento::activos()->orderBy('nombre')->get();

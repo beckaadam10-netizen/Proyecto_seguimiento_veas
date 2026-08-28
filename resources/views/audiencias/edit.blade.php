@@ -17,7 +17,7 @@
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
                     @foreach($expedientes as $exp)
                         <option value="{{ $exp->id }}" {{ old('expediente_id', $audiencia->expediente_id) == $exp->id ? 'selected' : '' }}>
-                            {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }}
+                            {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} ({{ $exp->abogado->nombre ?? 'sin abogado' }})
                         </option>
                     @endforeach
                 </select>

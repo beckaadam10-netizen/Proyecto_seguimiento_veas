@@ -20,7 +20,7 @@
                         <option value="{{ $exp->id }}" {{ old('expediente_id', $expediente_id) == $exp->id ? 'selected' : '' }}
                                 data-cliente-nombre="{{ $exp->cliente->nombre_completo }}"
                                 data-cliente-whatsapp="{{ $exp->cliente->telefono_whatsapp }}">
-                            {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} | {{ Str::limit($exp->caratula, 45) }}
+                            {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} | {{ Str::limit($exp->caratula, 45) }} ({{ $exp->abogado->nombre ?? 'sin abogado' }})
                         </option>
                     @endforeach
                 </select>

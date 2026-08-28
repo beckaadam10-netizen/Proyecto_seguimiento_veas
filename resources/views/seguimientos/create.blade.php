@@ -20,7 +20,7 @@
                             <option value="">— Ningún expediente —</option>
                             @foreach($expedientes as $exp)
                                 <option value="{{ $exp->id }}" {{ old('expediente_id', $expediente_id) == $exp->id ? 'selected' : '' }}>
-                                    {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} | {{ Str::limit($exp->caratula, 40) }}
+                                    {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} | {{ Str::limit($exp->caratula, 40) }} ({{ $exp->abogado->nombre ?? 'sin abogado' }})
                                 </option>
                             @endforeach
                         </select>

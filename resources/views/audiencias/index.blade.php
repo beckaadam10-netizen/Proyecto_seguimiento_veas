@@ -177,7 +177,7 @@
                             <option value="{{ $exp->id }}" {{ old('expediente_id', request('expediente_id')) == $exp->id ? 'selected' : '' }}
                                     data-cliente-nombre="{{ $exp->cliente->nombre_completo }}"
                                     data-cliente-whatsapp="{{ $exp->cliente->telefono_whatsapp }}">
-                                {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} | {{ Str::limit($exp->caratula, 45) }}
+                                {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} | {{ Str::limit($exp->caratula, 45) }} ({{ $exp->abogado->nombre ?? 'sin abogado' }})
                             </option>
                         @endforeach
                     </select>
@@ -313,7 +313,7 @@
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
                         @foreach($expedientes as $exp)
                             <option value="{{ $exp->id }}" {{ $aud->expediente_id == $exp->id ? 'selected' : '' }}>
-                                {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }}
+                                {{ $exp->numero }} — {{ $exp->cliente->nombre_completo }} ({{ $exp->abogado->nombre ?? 'sin abogado' }})
                             </option>
                         @endforeach
                     </select>

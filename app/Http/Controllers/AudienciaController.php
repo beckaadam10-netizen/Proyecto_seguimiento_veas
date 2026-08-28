@@ -27,7 +27,7 @@ class AudienciaController extends Controller
 
         $estados        = ['programada', 'confirmada', 'realizada', 'suspendida', 'reprogramada', 'cancelada'];
         $abogados       = Abogado::activos()->orderBy('nombre')->get();
-        $expedientes    = Expediente::with('cliente')->activos()->orderByDesc('created_at')->get();
+        $expedientes    = Expediente::with(['cliente', 'abogado'])->activos()->orderByDesc('created_at')->get();
         $tiposAudiencia = TipoAudiencia::activos()->orderBy('nombre')->get();
 
         return view('audiencias.index', compact('audiencias', 'estados', 'abogados', 'expedientes', 'tiposAudiencia'));
@@ -36,7 +36,7 @@ class AudienciaController extends Controller
     public function create(Request $request): View
     {
         $expediente_id  = $request->expediente_id;
-        $expedientes    = Expediente::with('cliente')->activos()->orderByDesc('created_at')->get();
+        $expedientes    = Expediente::with(['cliente', 'abogado'])->activos()->orderByDesc('created_at')->get();
         $abogados       = Abogado::activos()->orderBy('nombre')->get();
         $tiposAudiencia = TipoAudiencia::activos()->orderBy('nombre')->get();
         $estados        = ['programada', 'confirmada', 'realizada', 'suspendida', 'reprogramada', 'cancelada'];
@@ -115,7 +115,7 @@ class AudienciaController extends Controller
 
     public function edit(Audiencia $audiencia): View
     {
-        $expedientes    = Expediente::with('cliente')->activos()->orderByDesc('created_at')->get();
+        $expedientes    = Expediente::with(['cliente', 'abogado'])->activos()->orderByDesc('created_at')->get();
         $abogados       = Abogado::activos()->orderBy('nombre')->get();
         $tiposAudiencia = TipoAudiencia::activos()->orderBy('nombre')->get();
         $estados        = ['programada', 'confirmada', 'realizada', 'suspendida', 'reprogramada', 'cancelada'];
