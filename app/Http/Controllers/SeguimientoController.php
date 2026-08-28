@@ -287,6 +287,22 @@ class SeguimientoController extends Controller
     public function destroy(Seguimiento $seguimiento): RedirectResponse
     {
         $url = $this->urlContexto($seguimiento);
+
+        // Los gastos que se cargaron junto con esta actuación (sincronizarGasto) no se
+        // borran solos con la actuación (la FK es nullOnDelete, para no perder cobros ya
+        // hechos si el gasto quedara huérfano) — así que sin este chequeo, el gasto seguía
+        // apareciendo en Gastos y Cobros / Reporte de Pasantes aunque la actuación ya no
+        // existiera. Si ya tiene un cobro registrado, no se borra: hay que sacar el cobro
+        // primero para no perder ese rastro de dinero.
+        $seguimiento->loadMissing('gastos.cobros');
+
+        if ($seguimiento->gastos->contains(fn ($g) => $g->cobros->isNotEmpty())) {
+            return redirect()
+                ->to($url)
+                ->with('error', 'No se puede eliminar: tiene un gasto con un cobro ya registrado. Eliminá primero ese cobro.');
+        }
+
+        $seguimiento->gastos()->delete();
         $seguimiento->delete();
 
         return redirect()
