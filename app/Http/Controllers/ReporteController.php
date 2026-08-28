@@ -556,6 +556,13 @@ class ReporteController extends Controller
             ->unique()
             ->values();
 
+        // "total" se guardó como una foto al generar el PDF (pasantesPdf). Si después se
+        // borra uno de esos gastos (ej. al eliminar el seguimiento que lo originó), esa
+        // foto queda desactualizada — acá se pisa en memoria (no se persiste) con la suma
+        // actual de gastosDelPeriodo(), que es la misma consulta que arma el PDF, así el
+        // listado siempre coincide con lo que el PDF va a mostrar si se vuelve a generar.
+        $periodo->total = $gastos->sum('monto');
+
         return $periodo;
     }
 
