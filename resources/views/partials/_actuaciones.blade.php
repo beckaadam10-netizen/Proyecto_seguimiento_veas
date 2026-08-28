@@ -56,6 +56,14 @@
                     <i class="fas fa-edit"></i>
                 </a>
                 @endif
+                @if(auth()->user()->puede('seguimientos', 'eliminar'))
+                <form method="POST" action="{{ route('seguimientos.destroy', $seg) }}" onsubmit="return confirm('¿Eliminar esta actuación?')">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="text-gray-400 hover:text-red-600" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </form>
+                @endif
             </div>
         </div>
         @empty
@@ -105,9 +113,19 @@
                         <a href="{{ route('seguimientos.show', $seg) }}" class="text-gray-400 hover:text-brand-700" title="Ver">
                             <i class="fas fa-eye"></i>
                         </a>
+                        @if(auth()->user()->puede('seguimientos', 'modificar'))
                         <a href="{{ route('seguimientos.index', ['editar' => $seg->id, 'id' => $seg->id]) }}" class="text-gray-400 hover:text-brand-700" title="Editar">
                             <i class="fas fa-edit"></i>
                         </a>
+                        @endif
+                        @if(auth()->user()->puede('seguimientos', 'eliminar'))
+                        <form method="POST" action="{{ route('seguimientos.destroy', $seg) }}" onsubmit="return confirm('¿Eliminar esta actuación?')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="text-gray-400 hover:text-red-600" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                        @endif
                     </div>
                 </div>
                 @endforeach
