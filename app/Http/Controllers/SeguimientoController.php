@@ -347,7 +347,13 @@ class SeguimientoController extends Controller
     {
         Gasto::where('seguimiento_id', $seguimiento->id)->delete();
 
-        foreach ($gastos as $g) {
+        // Si el mismo concepto+monto aparece más de una vez (ej. doble clic en
+        // "+ Agregar gasto" cargó la misma línea dos veces sin que se note en el
+        // formulario), no se duplica el gasto real — se guarda una sola vez.
+        $gastosUnicos = collect($gastos)
+            ->unique(fn ($g) => strtolower(trim($g['concepto'] ?? '')) . '|' . (float) ($g['monto'] ?? 0));
+
+        foreach ($gastosUnicos as $g) {
             if (empty($g['concepto']) || empty($g['monto'])) {
                 continue;
             }
