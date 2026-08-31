@@ -224,17 +224,25 @@
 </div>
 
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
-    <div class="p-5 border-b">
+    <div class="p-5 border-b flex items-center justify-between flex-wrap gap-2">
         <h3 class="font-semibold text-gray-700">
             <i class="fas fa-check-double text-green-600 mr-2"></i>
             Revisados ({{ $periodosRevisados->count() }})
         </h3>
+        @if(!$esPasante)
+        <button type="button" id="btn-pdf-combinado" onclick="generarPdfClienteCombinado()" disabled
+                class="text-xs bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg font-medium flex items-center gap-2"
+                title="Elegí dos o más períodos con el check de la izquierda para juntarlos en un solo PDF">
+            <i class="fas fa-file-invoice"></i> Generar PDF combinado (<span id="contador-pdf-combinado">0</span>)
+        </button>
+        @endif
     </div>
     <div class="overflow-x-auto">
     <table class="min-w-full divide-y divide-gray-200 text-sm">
         <thead class="bg-gray-50">
             <tr>
                 @if(!$esPasante)
+                <th class="px-4 py-3 w-4"></th>
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Pasante</th>
                 @endif
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Expediente / Trámite</th>
@@ -248,6 +256,9 @@
             @forelse($periodosRevisados as $periodo)
             <tr class="hover:bg-gray-50 transition">
                 @if(!$esPasante)
+                <td class="px-4 py-3">
+                    <input type="checkbox" class="chk-periodo-revisado" value="{{ $periodo->id }}" onchange="actualizarBotonPdfCombinado()">
+                </td>
                 <td class="px-4 py-3 text-gray-700 whitespace-nowrap">{{ $periodo->usuario?->name ?? '—' }}</td>
                 @endif
                 <td class="px-4 py-3 text-gray-700">
@@ -283,7 +294,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="{{ $columnas }}" class="px-4 py-10 text-center text-gray-400">
+                <td colspan="{{ $columnas + ($esPasante ? 0 : 1) }}" class="px-4 py-10 text-center text-gray-400">
                     <i class="fas fa-check-double text-3xl mb-2"></i>
                     <p>Todavía no hay PDFs revisados.</p>
                 </td>
@@ -295,3 +306,24 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+function actualizarBotonPdfCombinado() {
+    const boton = document.getElementById('btn-pdf-combinado');
+    const contador = document.getElementById('contador-pdf-combinado');
+    if (!boton) return;
+
+    const marcados = document.querySelectorAll('.chk-periodo-revisado:checked').length;
+    contador.textContent = marcados;
+    boton.disabled = marcados < 2;
+}
+
+function generarPdfClienteCombinado() {
+    const ids = Array.from(document.querySelectorAll('.chk-periodo-revisado:checked')).map(c => c.value);
+    if (ids.length < 2) return;
+
+    window.open('{{ route('reportes.pasantes.ver-cliente-combinado') }}?periodos=' + ids.join(','), '_blank');
+}
+</script>
+@endpush

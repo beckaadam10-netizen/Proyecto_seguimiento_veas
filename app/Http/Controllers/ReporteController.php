@@ -510,6 +510,35 @@ class ReporteController extends Controller
         return $pdf->stream("detalle-gastos-{$reportePasanteGenerado->id}.pdf");
     }
 
+    // Junta los gastos de varios períodos ya revisados en un solo "Detalle Gastos
+    // Judiciales", para no tener que mandarle al cliente un PDF por cada período que se
+    // generó por separado (ej. si un pasante fue cobrando de a poco a lo largo del mes).
+    public function pasantesVerPdfClienteCombinado(Request $request): Response
+    {
+        abort_if($this->esPasante(), 403);
+
+        $ids = collect(explode(',', (string) $request->query('periodos')))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter();
+
+        abort_if($ids->isEmpty(), 404);
+
+        $periodos = ReportePasanteGenerado::whereIn('id', $ids)->where('revisado', true)->get();
+
+        $gastos = $periodos
+            ->flatMap(fn (ReportePasanteGenerado $p) => $this->gastosDelPeriodo($p))
+            ->unique('id');
+
+        $grupos = $this->agruparGastosPorCaso($gastos);
+
+        $pdf = Pdf::loadView('reportes.pdf.gastos-cliente', [
+            'grupos' => $grupos,
+            'total'  => $gastos->sum('monto'),
+        ])->setPaper('a4');
+
+        return $pdf->stream('detalle-gastos-combinado.pdf');
+    }
+
     // Los gastos que formaron un período ya generado, exactamente como quedaron en ese
     // momento. No alcanza con "fecha en el rango y creado antes de este período": un
     // gasto puede cumplir eso y aun así ya haber sido facturado en OTRO período anterior
