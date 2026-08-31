@@ -759,6 +759,36 @@
             cargar(link.href);
         });
     }
+
+    // Bloqueo genérico de doble envío: al mandar cualquier formulario del sistema,
+    // deshabilita el botón que lo disparó y le pone "Espere por favor..." para que un
+    // doble clic (o un click mientras la página todavía está guardando) no vuelva a
+    // mandar el mismo formulario dos veces. Si un onsubmit inline (ej. confirm()) ya
+    // canceló el envío, e.defaultPrevented es true y no se toca el botón. Los formularios
+    // que arman su propio envío por fetch()/AJAX ya hacen su propio preventDefault(), así
+    // que tampoco caen acá — solo aplica a envíos reales de formulario.
+    document.addEventListener('submit', (e) => {
+        if (e.defaultPrevented) return;
+
+        const boton = e.submitter;
+        if (!boton || boton.disabled) return;
+
+        boton.disabled = true;
+        boton.dataset.textoOriginalEnvio = boton.innerHTML;
+        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Espere por favor...';
+    });
+
+    // Si el navegador restaura la página desde el caché (ej. al volver con "atrás"),
+    // los botones que quedaron deshabilitados por el bloqueo de arriba no se resetean
+    // solos — hay que devolverles su estado normal.
+    window.addEventListener('pageshow', (e) => {
+        if (!e.persisted) return;
+        document.querySelectorAll('[data-texto-original-envio]').forEach((boton) => {
+            boton.disabled = false;
+            boton.innerHTML = boton.dataset.textoOriginalEnvio;
+            delete boton.dataset.textoOriginalEnvio;
+        });
+    });
 </script>
 
 @stack('scripts')
