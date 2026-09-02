@@ -592,7 +592,37 @@ class ReporteController extends Controller
         // listado siempre coincide con lo que el PDF va a mostrar si se vuelve a generar.
         $periodo->total = $gastos->sum('monto');
 
+        // Se adjunta la lista completa para que la vista pueda ofrecer, mientras el
+        // período sigue pendiente de revisar, un formulario para corregir el concepto
+        // de cada gasto sin otra consulta aparte.
+        $periodo->gastosLista = $gastos;
+
         return $periodo;
+    }
+
+    // Mientras un período sigue "pendiente de revisar", el pasante puede corregir el
+    // texto del concepto de sus propios gastos (ej. una errata) sin borrar y volver a
+    // cargar el gasto entero. El monto y la fecha no se tocan acá: eso cambiaría el
+    // total ya facturado a administración, que es justo lo que este flujo no permite.
+    // Una vez marcado "revisado" ya no se puede tocar, para que lo que administración
+    // controló quede fijo.
+    public function pasantesEditarConceptos(Request $request, ReportePasanteGenerado $reportePasanteGenerado): RedirectResponse
+    {
+        abort_unless($this->esPasante() && $reportePasanteGenerado->usuario_id === auth()->id(), 403);
+        abort_if($reportePasanteGenerado->revisado, 403);
+
+        $data = $request->validate([
+            'conceptos'   => 'required|array',
+            'conceptos.*' => 'required|string|max:200',
+        ]);
+
+        $gastosDelPeriodo = $this->gastosDelPeriodo($reportePasanteGenerado)->keyBy('id');
+
+        foreach ($data['conceptos'] as $gastoId => $concepto) {
+            $gastosDelPeriodo->get((int) $gastoId)?->update(['concepto' => $concepto]);
+        }
+
+        return back()->with('success', 'Conceptos actualizados.');
     }
 
     private function queryGastosPasante(Request $request): Builder

@@ -196,6 +196,12 @@
                        class="text-xs text-red-700 hover:underline font-medium mr-3">
                         <i class="fas fa-file-pdf"></i> Ver PDF
                     </a>
+                    @if($esPasante)
+                    <button type="button" onclick="abrirModal('modal-editar-conceptos-{{ $periodo->id }}')"
+                            class="text-xs text-gray-600 hover:underline font-medium">
+                        <i class="fas fa-pen"></i> Editar concepto
+                    </button>
+                    @endif
                     @if(!$esPasante)
                     <a href="{{ route('reportes.pasantes.ver-cliente', $periodo) }}" target="_blank"
                        class="text-xs text-brand-700 hover:underline font-medium mr-3">
@@ -222,6 +228,45 @@
     </table>
     </div>
 </div>
+
+@if($esPasante)
+    @foreach($periodosPendientes as $periodo)
+    {{-- Modal: corregir el concepto de los gastos de este período. El monto y la fecha
+         no son editables acá — el total ya quedó fijado al generar el PDF. --}}
+    <div id="modal-editar-conceptos-{{ $periodo->id }}" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="fixed inset-0 bg-black/50" onclick="cerrarModal('modal-editar-conceptos-{{ $periodo->id }}')"></div>
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative bg-white rounded-xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white rounded-t-xl">
+                    <h3 class="font-semibold text-gray-800 text-lg">
+                        <i class="fas fa-pen text-gray-600 mr-2"></i> Corregir concepto
+                    </h3>
+                    <button type="button" onclick="cerrarModal('modal-editar-conceptos-{{ $periodo->id }}')" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+                <form method="POST" action="{{ route('reportes.pasantes.editar-conceptos', $periodo) }}" class="p-6 space-y-4">
+                    @csrf @method('PATCH')
+                    @foreach($periodo->gastosLista as $gasto)
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">
+                            {{ $gasto->tipoGasto?->nombre ?? '—' }} · {{ number_format($gasto->monto, 2) }} Bs · {{ $gasto->fecha->format('d/m/Y') }}
+                        </label>
+                        <input type="text" name="conceptos[{{ $gasto->id }}]" value="{{ old('conceptos.' . $gasto->id, $gasto->concepto) }}"
+                               maxlength="200" required
+                               class="w-full rounded-lg border-gray-300 text-sm focus:ring-brand-500 focus:border-brand-500">
+                    </div>
+                    @endforeach
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" onclick="cerrarModal('modal-editar-conceptos-{{ $periodo->id }}')" class="text-sm text-gray-600 px-3 py-2">Cancelar</button>
+                        <button type="submit" class="text-sm bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg font-medium">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endforeach
+@endif
 
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
     <div class="p-5 border-b flex items-center justify-between flex-wrap gap-2">
