@@ -369,12 +369,16 @@ class ReporteController extends Controller
 
     public function pasantes(Request $request): View
     {
-        // El listado de "mis gastos" para generar un PDF nuevo es solo del pasante: un
-        // administrador ya ve y gestiona todo desde la tabla de "PDFs generados por el
-        // equipo" más abajo, no necesita este listado ni sus filtros.
-        $gastos     = $this->esPasante() ? $this->queryGastosPasante($request)->get() : collect();
+        // El listado de "mis gastos" para generar un PDF nuevo es de quien tenga gastos
+        // propios que reportar: siempre un pasante, y también un administrador que carga
+        // gastos de seguimientos igual que un pasante. Un administrador sin gastos propios
+        // no lo necesita: ya ve y gestiona todo desde la tabla de "PDFs generados por el
+        // equipo" más abajo.
+        $tienePropios = $this->tieneGastosPropios();
+
+        $gastos     = $tienePropios ? $this->queryGastosPasante($request, propio: true)->get() : collect();
         $grupos     = $this->agruparGastosPorCaso($gastos);
-        $tiposGasto = $this->esPasante() ? TipoGasto::orderBy('nombre')->get() : collect();
+        $tiposGasto = $tienePropios ? TipoGasto::orderBy('nombre')->get() : collect();
 
         // Un pasante ve el historial de sus propios PDFs generados. Cualquier otro rol
         // (ej. Administrador) ve el de todo el equipo, para poder revisarlos y generar la
@@ -395,7 +399,7 @@ class ReporteController extends Controller
             ? collect()
             : User::whereIn('id', ReportePasanteGenerado::select('usuario_id')->distinct())->orderBy('name')->get();
 
-        return view('reportes.pasantes', compact('grupos', 'tiposGasto', 'periodosPendientes', 'periodosRevisados', 'usuariosPasantes') + $this->resumenGastosPasante($gastos));
+        return view('reportes.pasantes', compact('grupos', 'tiposGasto', 'periodosPendientes', 'periodosRevisados', 'usuariosPasantes', 'tienePropios') + $this->resumenGastosPasante($gastos));
     }
 
     // Solo un administrador (o cualquier rol que no sea Pasante) puede marcar un período
@@ -423,12 +427,16 @@ class ReporteController extends Controller
         return back()->with('success', 'Reporte eliminado.');
     }
 
-    // El bloqueo de períodos (para no cobrar dos veces a administración) rige solo para
-    // el rol Pasante. Un administrador puede filtrar y generar el reporte libremente,
-    // sin necesidad de elegir un rango de fechas ni riesgo de que se le bloquee.
+    // El bloqueo de períodos (para no cobrar dos veces a administración) rige para
+    // cualquiera que reporte gastos propios (pasante, o administrador que también carga
+    // gastos). Un administrador sin gastos propios puede filtrar y generar el reporte de
+    // otros libremente, sin necesidad de elegir un rango de fechas ni riesgo de que se le
+    // bloquee.
     public function pasantesPdf(Request $request): Response|RedirectResponse
     {
-        if ($this->esPasante()) {
+        $propio = $this->tieneGastosPropios();
+
+        if ($propio) {
             $request->validate([
                 'desde' => 'required|date',
                 'hasta' => 'required|date|after_or_equal:desde',
@@ -442,9 +450,9 @@ class ReporteController extends Controller
         // un reporte anterior que los cubría; lo que quede acá es siempre nuevo (aunque su
         // fecha caiga dentro de un período ya generado), así que no hace falta bloquear por
         // solapamiento de fechas — alcanza con avisar si no hay nada nuevo para facturar.
-        $gastos = $this->queryGastosPasante($request)->get();
+        $gastos = $this->queryGastosPasante($request, propio: $propio)->get();
 
-        if ($this->esPasante() && $gastos->isEmpty()) {
+        if ($propio && $gastos->isEmpty()) {
             return redirect()->route('reportes.pasantes', $request->query())->with('error',
                 'No hay gastos nuevos para facturar en ese rango de fechas (o ya fueron incluidos en un reporte anterior).'
             );
@@ -452,7 +460,7 @@ class ReporteController extends Controller
 
         $grupos = $this->agruparGastosPorCaso($gastos);
 
-        if ($this->esPasante()) {
+        if ($propio) {
             ReportePasanteGenerado::create([
                 'usuario_id' => auth()->id(),
                 'desde'      => $request->desde,
@@ -608,7 +616,7 @@ class ReporteController extends Controller
     // controló quede fijo.
     public function pasantesEditarConceptos(Request $request, ReportePasanteGenerado $reportePasanteGenerado): RedirectResponse
     {
-        abort_unless($this->esPasante() && $reportePasanteGenerado->usuario_id === auth()->id(), 403);
+        abort_unless($reportePasanteGenerado->usuario_id === auth()->id(), 403);
         abort_if($reportePasanteGenerado->revisado, 403);
 
         $data = $request->validate([
@@ -625,14 +633,14 @@ class ReporteController extends Controller
         return back()->with('success', 'Conceptos actualizados.');
     }
 
-    private function queryGastosPasante(Request $request): Builder
+    private function queryGastosPasante(Request $request, bool $propio): Builder
     {
         // Los gastos que ya quedaron dentro de un período con PDF generado no tienen que
         // volver a aparecer en el listado (ya fueron cobrados a administración). Pero un
         // gasto cargado DESPUÉS de generar ese PDF, aunque su fecha caiga dentro del rango,
         // nunca llegó a facturarse — si lo excluyéramos solo por fecha, quedaría invisible
         // para siempre. Por eso el corte es por cuándo se creó el gasto, no por su fecha.
-        $periodosGenerados = $this->esPasante()
+        $periodosGenerados = $propio
             ? ReportePasanteGenerado::where('usuario_id', auth()->id())->get(['desde', 'hasta', 'created_at'])
             : collect();
 
@@ -646,10 +654,11 @@ class ReporteController extends Controller
                 'tipoGasto',
                 'usuario',
             ])
-            // Un pasante solo puede ver sus propios gastos. Cualquier otro rol ve los de
-            // todos, o los de un pasante puntual si lo elige en el filtro.
-            ->when($this->esPasante(), fn ($q) => $q->where('usuario_id', auth()->id()))
-            ->when(! $this->esPasante() && $request->filled('usuario_id'), fn ($q) => $q->where('usuario_id', $request->usuario_id))
+            // Un pasante (o un administrador con gastos propios) solo ve sus propios
+            // gastos. Cualquier otro caso ve los de todos, o los de un pasante puntual si
+            // lo elige en el filtro.
+            ->when($propio, fn ($q) => $q->where('usuario_id', auth()->id()))
+            ->when(! $propio && $request->filled('usuario_id'), fn ($q) => $q->where('usuario_id', $request->usuario_id))
             ->when($periodosGenerados->isNotEmpty(), function ($q) use ($periodosGenerados) {
                 foreach ($periodosGenerados as $periodo) {
                     $q->where(function ($sub) use ($periodo) {
@@ -667,6 +676,15 @@ class ReporteController extends Controller
     private function esPasante(): bool
     {
         return auth()->user()->rol?->nombre === 'Pasante';
+    }
+
+    // Un pasante siempre reporta sus propios gastos. Un administrador (u otro rol) entra
+    // al mismo flujo de "mis gastos" solo si él mismo cargó algún gasto de seguimientos —
+    // si nunca cargó ninguno, no tiene nada propio que reportar y solo usa la vista de
+    // administración del equipo.
+    private function tieneGastosPropios(): bool
+    {
+        return $this->esPasante() || Gasto::where('usuario_id', auth()->id())->exists();
     }
 
     // Un gasto pertenece a un expediente o a un trámite, nunca a ambos (ver Gasto::expediente()/tramite()).

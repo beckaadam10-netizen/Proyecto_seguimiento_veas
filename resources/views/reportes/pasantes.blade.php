@@ -3,10 +3,10 @@
 @section('title', 'Reporte Pasantes')
 @section('header', 'Reporte Pasantes')
 
-@php $esPasante = auth()->user()->rol?->nombre === 'Pasante'; @endphp
+@php $puedeAdministrar = auth()->user()->rol?->nombre !== 'Pasante'; @endphp
 
 @section('header-actions')
-    @if($esPasante)
+    @if($tienePropios)
     <div class="flex items-center gap-2">
         <a href="{{ route('reportes.pasantes.pdf', request()->query()) }}"
            onclick="setTimeout(() => location.reload(), 1000)"
@@ -20,7 +20,7 @@
 
 @section('content')
 
-@if($esPasante)
+@if($tienePropios)
 <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
     <p class="text-sm text-gray-500 mb-3">Mis gastos registrados — {{ auth()->user()->name }}</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -120,7 +120,7 @@
 </div>
 @endif
 
-@if(!$esPasante)
+@if($puedeAdministrar)
 <form method="GET" class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
     <div>
         <label class="block text-xs text-gray-500 mb-1">Pasante</label>
@@ -149,7 +149,7 @@
 @endif
 
 @php
-    $columnas = ($esPasante ? 4 : 5) + 1; // + Acciones
+    $columnas = ($puedeAdministrar ? 5 : 4) + 1; // + Acciones
 @endphp
 
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
@@ -163,7 +163,7 @@
     <table class="min-w-full divide-y divide-gray-200 text-sm">
         <thead class="bg-gray-50">
             <tr>
-                @if(!$esPasante)
+                @if($puedeAdministrar)
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Pasante</th>
                 @endif
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Expediente / Trámite</th>
@@ -176,7 +176,7 @@
         <tbody class="divide-y divide-gray-100">
             @forelse($periodosPendientes as $periodo)
             <tr class="hover:bg-gray-50 transition">
-                @if(!$esPasante)
+                @if($puedeAdministrar)
                 <td class="px-4 py-3 text-gray-700 whitespace-nowrap">{{ $periodo->usuario?->name ?? '—' }}</td>
                 @endif
                 <td class="px-4 py-3 text-gray-700">
@@ -196,13 +196,13 @@
                        class="text-xs text-red-700 hover:underline font-medium mr-3">
                         <i class="fas fa-file-pdf"></i> Ver PDF
                     </a>
-                    @if($esPasante)
+                    @if($periodo->usuario_id === auth()->id())
                     <button type="button" onclick="abrirModal('modal-editar-conceptos-{{ $periodo->id }}')"
                             class="text-xs text-gray-600 hover:underline font-medium">
                         <i class="fas fa-pen"></i> Editar concepto
                     </button>
                     @endif
-                    @if(!$esPasante)
+                    @if($puedeAdministrar)
                     <a href="{{ route('reportes.pasantes.ver-cliente', $periodo) }}" target="_blank"
                        class="text-xs text-brand-700 hover:underline font-medium mr-3">
                         <i class="fas fa-file-invoice"></i> Generar PDF cliente
@@ -220,7 +220,7 @@
             <tr>
                 <td colspan="{{ $columnas }}" class="px-4 py-10 text-center text-gray-400">
                     <i class="fas fa-clock-rotate-left text-3xl mb-2"></i>
-                    <p>{{ $esPasante ? 'Todavía no generaste ningún PDF.' : 'No hay PDFs pendientes de revisar.' }}</p>
+                    <p>{{ $puedeAdministrar ? 'No hay PDFs pendientes de revisar.' : 'Todavía no generaste ningún PDF.' }}</p>
                 </td>
             </tr>
             @endforelse
@@ -229,8 +229,8 @@
     </div>
 </div>
 
-@if($esPasante)
     @foreach($periodosPendientes as $periodo)
+    @continue($periodo->usuario_id !== auth()->id())
     {{-- Modal: corregir el concepto de los gastos de este período. El monto y la fecha
          no son editables acá — el total ya quedó fijado al generar el PDF. --}}
     <div id="modal-editar-conceptos-{{ $periodo->id }}" class="hidden fixed inset-0 z-50 overflow-y-auto">
@@ -266,7 +266,6 @@
         </div>
     </div>
     @endforeach
-@endif
 
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mt-6">
     <div class="p-5 border-b flex items-center justify-between flex-wrap gap-2">
@@ -274,7 +273,7 @@
             <i class="fas fa-check-double text-green-600 mr-2"></i>
             Revisados ({{ $periodosRevisados->count() }})
         </h3>
-        @if(!$esPasante)
+        @if($puedeAdministrar)
         <button type="button" id="btn-pdf-combinado" onclick="generarPdfClienteCombinado()" disabled
                 class="text-xs bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg font-medium flex items-center gap-2"
                 title="Elegí dos o más períodos con el check de la izquierda para juntarlos en un solo PDF">
@@ -286,7 +285,7 @@
     <table class="min-w-full divide-y divide-gray-200 text-sm">
         <thead class="bg-gray-50">
             <tr>
-                @if(!$esPasante)
+                @if($puedeAdministrar)
                 <th class="px-4 py-3 w-4"></th>
                 <th class="px-4 py-3 text-left font-semibold text-gray-600">Pasante</th>
                 @endif
@@ -300,7 +299,7 @@
         <tbody class="divide-y divide-gray-100">
             @forelse($periodosRevisados as $periodo)
             <tr class="hover:bg-gray-50 transition">
-                @if(!$esPasante)
+                @if($puedeAdministrar)
                 <td class="px-4 py-3">
                     <input type="checkbox" class="chk-periodo-revisado" value="{{ $periodo->id }}" onchange="actualizarBotonPdfCombinado()">
                 </td>
@@ -320,10 +319,10 @@
                 <td class="px-4 py-3 text-right font-bold text-amber-800 whitespace-nowrap">{{ number_format($periodo->total, 2) }} Bs</td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                     <a href="{{ route('reportes.pasantes.ver', $periodo) }}" target="_blank"
-                       class="text-xs text-red-700 hover:underline font-medium {{ $esPasante ? '' : 'mr-3' }}">
+                       class="text-xs text-red-700 hover:underline font-medium {{ $puedeAdministrar ? 'mr-3' : '' }}">
                         <i class="fas fa-file-pdf"></i> Ver PDF
                     </a>
-                    @if(!$esPasante)
+                    @if($puedeAdministrar)
                     <a href="{{ route('reportes.pasantes.ver-cliente', $periodo) }}" target="_blank"
                        class="text-xs text-brand-700 hover:underline font-medium mr-3">
                         <i class="fas fa-file-invoice"></i> Generar PDF cliente
@@ -339,7 +338,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="{{ $columnas + ($esPasante ? 0 : 1) }}" class="px-4 py-10 text-center text-gray-400">
+                <td colspan="{{ $columnas + ($puedeAdministrar ? 1 : 0) }}" class="px-4 py-10 text-center text-gray-400">
                     <i class="fas fa-check-double text-3xl mb-2"></i>
                     <p>Todavía no hay PDFs revisados.</p>
                 </td>
