@@ -554,7 +554,10 @@ class ReporteController extends Controller
     // que hace queryGastosPasante() al generar un período nuevo.
     private function gastosDelPeriodo(ReportePasanteGenerado $periodo)
     {
-        $periodosAnteriores = ReportePasanteGenerado::where('usuario_id', $periodo->usuario_id)
+        // withTrashed(): un período anterior eliminado igual bloqueó sus gastos (ver
+        // pasantesDestroy), así que sigue contando acá para no volver a incluirlos.
+        $periodosAnteriores = ReportePasanteGenerado::withTrashed()
+            ->where('usuario_id', $periodo->usuario_id)
             ->where('created_at', '<', $periodo->created_at)
             ->get(['desde', 'hasta', 'created_at']);
 
@@ -640,8 +643,10 @@ class ReporteController extends Controller
         // gasto cargado DESPUÉS de generar ese PDF, aunque su fecha caiga dentro del rango,
         // nunca llegó a facturarse — si lo excluyéramos solo por fecha, quedaría invisible
         // para siempre. Por eso el corte es por cuándo se creó el gasto, no por su fecha.
+        // withTrashed(): un período eliminado (pasantesDestroy) ya facturó esos gastos, así
+        // que tienen que seguir excluidos y no reaparecer acá como "gastos nuevos".
         $periodosGenerados = $propio
-            ? ReportePasanteGenerado::where('usuario_id', auth()->id())->get(['desde', 'hasta', 'created_at'])
+            ? ReportePasanteGenerado::withTrashed()->where('usuario_id', auth()->id())->get(['desde', 'hasta', 'created_at'])
             : collect();
 
         // withTrashed(): un gasto de un expediente archivado/eliminado más tarde
