@@ -155,6 +155,27 @@ class ExpedienteController extends Controller
         return $pdf->download("detalle-cobro-{$expediente->numero}.pdf");
     }
 
+    // Comprobante con TODOS los cobros ya registrados (no los pendientes). Se genera al
+    // vuelo a partir de los cobros actuales, así que siempre refleja lo cobrado hasta ese
+    // momento. Usa stream() en vez de download() para que se pueda ver en el navegador
+    // antes de decidir si descargarlo.
+    public function cobrosPdf(Request $request, Expediente $expediente): Response
+    {
+        $this->autorizarPropioCliente($request, $expediente);
+
+        $cobros = $expediente->cobros()->with(['gasto', 'usuario'])->get();
+
+        abort_if($cobros->isEmpty(), 404);
+
+        $pdf = Pdf::loadView('expedientes.cobros-pdf', [
+            'expediente' => $expediente->load('cliente', 'abogado'),
+            'cobros'     => $cobros,
+            'total'      => (float) $cobros->sum('monto'),
+        ])->setPaper('a4');
+
+        return $pdf->stream("comprobante-cobros-{$expediente->numero}.pdf");
+    }
+
     public function documentosZip(Request $request, Expediente $expediente): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $this->autorizarPropioCliente($request, $expediente);

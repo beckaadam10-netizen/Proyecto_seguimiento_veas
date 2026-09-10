@@ -81,6 +81,9 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     Route::get('expedientes/{expediente}/items-cobro/pdf', [ExpedienteController::class, 'itemsCobroPdf'])
          ->middleware('permission:gastos_cobros.ver')
          ->name('expedientes.items-cobro.pdf');
+    Route::get('expedientes/{expediente}/cobros/pdf', [ExpedienteController::class, 'cobrosPdf'])
+         ->middleware('permission:gastos_cobros.ver')
+         ->name('expedientes.cobros.pdf');
     Route::get('expedientes/{expediente}/documentos/zip', [ExpedienteController::class, 'documentosZip'])
          ->middleware(['permission:expedientes.ver', 'permission:documentos.descargar'])
          ->name('expedientes.documentos.zip');
@@ -115,6 +118,9 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     Route::get('tramites/{tramite}/items-cobro/pdf', [TramiteController::class, 'itemsCobroPdf'])
          ->middleware('permission:gastos_cobros.ver')
          ->name('tramites.items-cobro.pdf');
+    Route::get('tramites/{tramite}/cobros/pdf', [TramiteController::class, 'cobrosPdf'])
+         ->middleware('permission:gastos_cobros.ver')
+         ->name('tramites.cobros.pdf');
     Route::get('tramites/{tramite}/documentos/zip', [TramiteController::class, 'documentosZip'])
          ->middleware(['permission:tramites.ver', 'permission:documentos.descargar'])
          ->name('tramites.documentos.zip');

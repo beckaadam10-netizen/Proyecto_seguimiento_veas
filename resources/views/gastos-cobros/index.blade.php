@@ -426,6 +426,12 @@
                         </div>
                         @endforeach
                     </div>
+                    <div class="flex justify-end mt-2">
+                        <a href="{{ route($item->tipo_registro . 's.cobros.pdf', $item) }}" target="_blank"
+                           class="text-xs text-gray-600 hover:text-brand-700 flex items-center gap-1.5 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50">
+                            <i class="fas fa-file-pdf text-red-500"></i> Generar PDF del historial
+                        </a>
+                    </div>
                 </div>
                 @endif
             </div>

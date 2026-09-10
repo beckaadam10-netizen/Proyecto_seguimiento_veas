@@ -142,6 +142,27 @@ class TramiteController extends Controller
         return $pdf->download("detalle-cobro-{$tramite->codigo}.pdf");
     }
 
+    // Comprobante con TODOS los cobros ya registrados (no los pendientes). Se genera al
+    // vuelo a partir de los cobros actuales, así que siempre refleja lo cobrado hasta ese
+    // momento. Usa stream() en vez de download() para que se pueda ver en el navegador
+    // antes de decidir si descargarlo.
+    public function cobrosPdf(Request $request, Tramite $tramite): Response
+    {
+        $this->autorizarPropioCliente($request, $tramite);
+
+        $cobros = $tramite->cobros()->with(['gasto', 'usuario'])->get();
+
+        abort_if($cobros->isEmpty(), 404);
+
+        $pdf = Pdf::loadView('tramites.cobros-pdf', [
+            'tramite' => $tramite->load('cliente', 'institucionPublica', 'responsable'),
+            'cobros'  => $cobros,
+            'total'   => (float) $cobros->sum('monto'),
+        ])->setPaper('a4');
+
+        return $pdf->stream("comprobante-cobros-{$tramite->codigo}.pdf");
+    }
+
     public function documentosZip(Request $request, Tramite $tramite): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $this->autorizarPropioCliente($request, $tramite);

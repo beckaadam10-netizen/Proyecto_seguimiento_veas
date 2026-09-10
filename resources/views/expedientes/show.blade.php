@@ -1198,9 +1198,17 @@
                     <i class="fas fa-hand-holding-dollar text-emerald-600 mr-2"></i>
                     Todos los cobros ({{ $expediente->cobros->count() }})
                 </h3>
-                <button type="button" onclick="cerrarModal('modal-cobros-todos')" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-lg"></i>
-                </button>
+                <div class="flex items-center gap-3">
+                    @if($expediente->cobros->isNotEmpty())
+                    <a href="{{ route('expedientes.cobros.pdf', $expediente) }}" target="_blank"
+                       class="text-xs text-red-700 hover:underline font-medium flex items-center gap-1" title="Vista previa del comprobante en una pestaña nueva">
+                        <i class="fas fa-file-pdf"></i> Generar PDF
+                    </a>
+                    @endif
+                    <button type="button" onclick="cerrarModal('modal-cobros-todos')" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
             </div>
             <div class="divide-y divide-gray-100">
                 @foreach($expediente->cobros as $cobro)
