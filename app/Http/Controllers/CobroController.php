@@ -8,6 +8,7 @@ use App\Models\Tramite;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -42,6 +43,12 @@ class CobroController extends Controller
         });
 
         $base = $validador->validate();
+
+        // Todos los cobros que salen de este mismo envío (ya sea un cobro total repartido
+        // entre varios gastos, un abono, o varios ítems elegidos a mano) comparten el mismo
+        // lote, para poder generar un único PDF por cada vez que se cobra, en vez de uno
+        // por gasto o uno con el historial entero.
+        $base['lote'] = (string) Str::uuid();
 
         $entidad = $base['tramite_id']
             ? Tramite::with('gastos.cobros')->findOrFail($base['tramite_id'])
@@ -165,6 +172,7 @@ class CobroController extends Controller
 
             Cobro::create(array_merge($this->claveEntidad($entidad), [
                 'gasto_id'    => $gasto->id,
+                'lote'        => $base['lote'],
                 'usuario_id'  => auth()->id(),
                 'monto'       => $aplicar,
                 'fecha'       => $base['fecha'],
@@ -180,6 +188,7 @@ class CobroController extends Controller
         // general en vez de perderlo.
         if ($restante > 0.004) {
             Cobro::create(array_merge($this->claveEntidad($entidad), [
+                'lote'        => $base['lote'],
                 'usuario_id'  => auth()->id(),
                 'monto'       => round($restante, 2),
                 'fecha'       => $base['fecha'],
@@ -207,6 +216,7 @@ class CobroController extends Controller
 
             Cobro::create(array_merge($this->claveEntidad($entidad), [
                 'gasto_id'    => $gasto->id,
+                'lote'        => $base['lote'],
                 'usuario_id'  => auth()->id(),
                 'monto'       => $pendiente,
                 'fecha'       => $base['fecha'],

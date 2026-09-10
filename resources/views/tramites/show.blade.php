@@ -795,8 +795,8 @@
                 <div class="flex items-center gap-3">
                     @if($tramite->cobros->isNotEmpty())
                     <a href="{{ route('tramites.cobros.pdf', $tramite) }}" target="_blank"
-                       class="text-xs text-red-700 hover:underline font-medium flex items-center gap-1" title="Vista previa del comprobante en una pestaña nueva">
-                        <i class="fas fa-file-pdf"></i> Generar PDF
+                       class="text-xs text-gray-500 hover:underline font-medium flex items-center gap-1" title="Vista previa del historial completo en una pestaña nueva">
+                        <i class="fas fa-file-pdf"></i> PDF de todo
                     </a>
                     @endif
                     <button type="button" onclick="cerrarModal('modal-cobros-todos')" class="text-gray-400 hover:text-gray-600">
@@ -804,35 +804,59 @@
                     </button>
                 </div>
             </div>
-            <div class="divide-y divide-gray-100">
-                @foreach($tramite->cobros as $cobro)
-                <div class="px-5 py-3 hover:bg-gray-50 flex items-start gap-3">
-                    <div class="flex-1 min-w-0">
-                        <p class="font-medium text-sm text-gray-800">
-                            {{ $cobro->gasto?->concepto ?? 'General' }}
-                        </p>
-                        <p class="text-xs text-gray-500">
-                            {{ $cobro->fecha->format('d/m/Y') }} ·
-                            <span class="uppercase">{{ $cobro->metodo_pago }}</span>
-                            @if($cobro->usuario) · {{ $cobro->usuario->name }} @endif
-                        </p>
+            @php
+                // Cada vez que se hace click en "Cobrar" (aunque reparta el monto entre
+                // varios gastos), todos esos cobros comparten un mismo lote — así se
+                // agrupan acá y se genera un solo PDF por cada cobro hecho, no uno por
+                // gasto ni uno con todo el historial junto.
+                $lotesCobros = $tramite->cobros
+                    ->groupBy(fn ($c) => $c->lote ?? 'solo-' . $c->id)
+                    ->sortByDesc(fn ($grupo) => $grupo->max('created_at'));
+            @endphp
+            <div class="divide-y divide-gray-200">
+                @foreach($lotesCobros as $loteId => $cobrosDelLote)
+                @php $primero = $cobrosDelLote->first(); @endphp
+                <div class="px-5 py-3">
+                    <div class="flex items-center justify-between gap-3 mb-1.5">
+                        <div class="text-xs text-gray-500">
+                            <span class="font-medium text-gray-700">{{ $primero->fecha->format('d/m/Y') }}</span> ·
+                            <span class="uppercase">{{ $primero->metodo_pago }}</span>
+                            @if($primero->usuario) · {{ $primero->usuario->name }} @endif
+                            · {{ $cobrosDelLote->count() }} {{ Str::plural('ítem', $cobrosDelLote->count()) }}
+                        </div>
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <span class="text-sm font-semibold text-emerald-700">{{ number_format($cobrosDelLote->sum('monto'), 2) }} Bs</span>
+                            @if(!str($loteId)->startsWith('solo-'))
+                            <a href="{{ route('tramites.cobros.pdf', $tramite) }}?lote={{ $loteId }}" target="_blank"
+                               class="text-xs text-red-700 hover:underline font-medium flex items-center gap-1" title="Vista previa de este cobro en una pestaña nueva">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                            @endif
+                        </div>
                     </div>
-                    <span class="text-sm font-semibold text-emerald-700 flex-shrink-0">{{ number_format($cobro->monto, 2) }} Bs</span>
-                    <div class="flex gap-2 text-xs flex-shrink-0">
-                        @if(auth()->user()->puede('gastos_cobros', 'cobrar'))
-                        <button type="button" onclick="cerrarModal('modal-cobros-todos'); abrirModal('modal-cobro-editar-{{ $cobro->id }}')" class="text-gray-400 hover:text-brand-700" title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        @endif
-                        @if(auth()->user()->puede('gastos_cobros', 'eliminar'))
-                        <form method="POST" action="{{ route('cobros.destroy', $cobro) }}"
-                              onsubmit="return confirm('¿Eliminar este cobro?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="text-gray-400 hover:text-red-600" title="Eliminar">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
-                        @endif
+                    <div class="space-y-1">
+                        @foreach($cobrosDelLote as $cobro)
+                        <div class="flex items-center justify-between gap-3 text-sm">
+                            <span class="text-gray-600 truncate">{{ $cobro->gasto?->concepto ?? 'Cobro general' }}</span>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <span class="text-gray-500">{{ number_format($cobro->monto, 2) }} Bs</span>
+                                @if(auth()->user()->puede('gastos_cobros', 'cobrar'))
+                                <button type="button" onclick="cerrarModal('modal-cobros-todos'); abrirModal('modal-cobro-editar-{{ $cobro->id }}')" class="text-gray-400 hover:text-brand-700" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                @endif
+                                @if(auth()->user()->puede('gastos_cobros', 'eliminar'))
+                                <form method="POST" action="{{ route('cobros.destroy', $cobro) }}"
+                                      onsubmit="return confirm('¿Eliminar este cobro?')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-gray-400 hover:text-red-600" title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
                     </div>
                 </div>
                 @endforeach

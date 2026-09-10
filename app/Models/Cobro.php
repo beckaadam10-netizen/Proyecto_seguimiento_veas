@@ -14,6 +14,7 @@ class Cobro extends Model
         'tramite_id',
         'expediente_id',
         'gasto_id',
+        'lote',
         'usuario_id',
         'monto',
         'fecha',

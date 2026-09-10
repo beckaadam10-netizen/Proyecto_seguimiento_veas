@@ -412,24 +412,44 @@
                         <span><i class="fas fa-clock-rotate-left mr-1"></i> Historial de cobros ({{ $item->cobros->count() }})</span>
                         <i class="fas fa-chevron-down transition-transform"></i>
                     </button>
-                    <div id="historial-cobros-{{ $item->tipo_registro }}-{{ $item->id }}" class="hidden mt-2 space-y-1 max-h-40 overflow-y-auto border rounded-lg p-3 bg-white">
-                        @foreach($item->cobros as $cobro)
-                        <div class="flex items-center justify-between gap-3 text-sm py-1 {{ !$loop->last ? 'border-b border-gray-100' : '' }}">
-                            <span class="min-w-0">
-                                <span class="truncate block text-gray-700">{{ $cobro->gasto?->concepto ?? 'Cobro general' }}</span>
-                                <span class="text-[11px] text-gray-400 block truncate">
-                                    {{ $cobro->fecha->format('d/m/Y') }} · <span class="uppercase">{{ $cobro->metodo_pago }}</span>
-                                    @if($cobro->usuario) · {{ $cobro->usuario->name }} @endif
+                    @php
+                        // Cada vez que se hace click en "Cobrar" (aunque reparta el monto
+                        // entre varios gastos), todos esos cobros comparten un mismo lote —
+                        // así se agrupan acá y se genera un solo PDF por cada cobro hecho,
+                        // no uno por gasto ni uno con todo el historial junto.
+                        $lotesCobrosItem = $item->cobros
+                            ->groupBy(fn ($c) => $c->lote ?? 'solo-' . $c->id)
+                            ->sortByDesc(fn ($grupo) => $grupo->max('created_at'));
+                    @endphp
+                    <div id="historial-cobros-{{ $item->tipo_registro }}-{{ $item->id }}" class="hidden mt-2 space-y-2 max-h-56 overflow-y-auto border rounded-lg p-3 bg-white">
+                        @foreach($lotesCobrosItem as $loteId => $cobrosDelLote)
+                        @php $primero = $cobrosDelLote->first(); @endphp
+                        <div class="{{ !$loop->last ? 'pb-2 border-b border-gray-100' : '' }}">
+                            <div class="flex items-center justify-between gap-3 text-xs text-gray-400 mb-1">
+                                <span>
+                                    {{ $primero->fecha->format('d/m/Y') }} · <span class="uppercase">{{ $primero->metodo_pago }}</span>
+                                    @if($primero->usuario) · {{ $primero->usuario->name }} @endif
                                 </span>
-                            </span>
-                            <span class="text-emerald-700 font-medium flex-shrink-0">{{ number_format($cobro->monto, 2) }} Bs</span>
+                                @if(!str($loteId)->startsWith('solo-'))
+                                <a href="{{ route($item->tipo_registro . 's.cobros.pdf', $item) }}?lote={{ $loteId }}" target="_blank"
+                                   class="text-red-600 hover:underline flex items-center gap-1 flex-shrink-0">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a>
+                                @endif
+                            </div>
+                            @foreach($cobrosDelLote as $cobro)
+                            <div class="flex items-center justify-between gap-3 text-sm py-0.5">
+                                <span class="truncate text-gray-700">{{ $cobro->gasto?->concepto ?? 'Cobro general' }}</span>
+                                <span class="text-emerald-700 font-medium flex-shrink-0">{{ number_format($cobro->monto, 2) }} Bs</span>
+                            </div>
+                            @endforeach
                         </div>
                         @endforeach
                     </div>
                     <div class="flex justify-end mt-2">
                         <a href="{{ route($item->tipo_registro . 's.cobros.pdf', $item) }}" target="_blank"
                            class="text-xs text-gray-600 hover:text-brand-700 flex items-center gap-1.5 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50">
-                            <i class="fas fa-file-pdf text-red-500"></i> Generar PDF del historial
+                            <i class="fas fa-file-pdf text-red-500"></i> PDF de todo el historial
                         </a>
                     </div>
                 </div>

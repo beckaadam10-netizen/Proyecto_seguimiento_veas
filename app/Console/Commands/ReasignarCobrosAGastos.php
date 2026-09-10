@@ -6,6 +6,7 @@ use App\Models\Cobro;
 use App\Models\Expediente;
 use App\Models\Tramite;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 // Antes de esta corrección, un cobro "total" o "abono" se registraba suelto (sin
 // gasto_id), así que los gastos que en realidad cubría seguían mostrándose como
@@ -49,6 +50,9 @@ class ReasignarCobrosAGastos extends Command
 
             foreach ($sueltos as $cobro) {
                 $restante = (float) $cobro->monto;
+                // Todas las partes en que se divide este cobro suelto comparten un mismo
+                // lote (así después se puede generar un solo PDF por cada cobro original).
+                $lote = (string) Str::uuid();
 
                 foreach ($gastosOrdenados as $gasto) {
                     if ($restante <= 0.004) {
@@ -70,6 +74,7 @@ class ReasignarCobrosAGastos extends Command
                             'tramite_id'    => $cobro->tramite_id,
                             'expediente_id' => $cobro->expediente_id,
                             'gasto_id'      => $gasto->id,
+                            'lote'          => $lote,
                             'usuario_id'    => $cobro->usuario_id,
                             'monto'         => $aplicar,
                             'fecha'         => $cobro->fecha,
@@ -91,7 +96,7 @@ class ReasignarCobrosAGastos extends Command
                     // después de cobrarlo): se deja como cobro suelto por el remanente.
                     $this->line("  {$etiqueta} · cobro #{$cobro->id}: queda {$restante} Bs sin gasto asociado (remanente)");
                     if (! $dryRun) {
-                        $cobro->update(['monto' => round($restante, 2)]);
+                        $cobro->update(['monto' => round($restante, 2), 'lote' => $lote]);
                     }
                 } else {
                     if (! $dryRun) {

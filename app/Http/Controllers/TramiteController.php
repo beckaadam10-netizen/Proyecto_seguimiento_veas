@@ -142,15 +142,21 @@ class TramiteController extends Controller
         return $pdf->download("detalle-cobro-{$tramite->codigo}.pdf");
     }
 
-    // Comprobante con TODOS los cobros ya registrados (no los pendientes). Se genera al
-    // vuelo a partir de los cobros actuales, así que siempre refleja lo cobrado hasta ese
-    // momento. Usa stream() en vez de download() para que se pueda ver en el navegador
-    // antes de decidir si descargarlo.
+    // Comprobante de cobros. Con ?lote=xxx genera el comprobante de ESE cobro puntual (lo
+    // normal: un comprobante por cada vez que se cobra); sin lote, junta todo el historial.
+    // Se genera al vuelo a partir de los cobros actuales. Usa stream() en vez de download()
+    // para que se pueda ver en el navegador antes de decidir si descargarlo.
     public function cobrosPdf(Request $request, Tramite $tramite): Response
     {
         $this->autorizarPropioCliente($request, $tramite);
 
-        $cobros = $tramite->cobros()->with(['gasto', 'usuario'])->get();
+        $query = $tramite->cobros()->with(['gasto', 'usuario']);
+
+        if ($request->filled('lote')) {
+            $query->where('lote', $request->query('lote'));
+        }
+
+        $cobros = $query->get();
 
         abort_if($cobros->isEmpty(), 404);
 
@@ -160,7 +166,9 @@ class TramiteController extends Controller
             'total'   => (float) $cobros->sum('monto'),
         ])->setPaper('a4');
 
-        return $pdf->stream("comprobante-cobros-{$tramite->codigo}.pdf");
+        $sufijo = $request->filled('lote') ? $cobros->first()->fecha->format('Y-m-d') : 'historial';
+
+        return $pdf->stream("comprobante-cobro-{$tramite->codigo}-{$sufijo}.pdf");
     }
 
     public function documentosZip(Request $request, Tramite $tramite): \Symfony\Component\HttpFoundation\BinaryFileResponse
