@@ -288,11 +288,18 @@
             Revisados ({{ $periodosRevisados->count() }})
         </h3>
         @if($puedeAdministrar)
-        <button type="button" id="btn-pdf-combinado" onclick="generarPdfClienteCombinado()" disabled
-                class="text-xs bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg font-medium flex items-center gap-2"
-                title="Elegí dos o más períodos con el check de la izquierda para juntarlos en un solo PDF">
-            <i class="fas fa-file-invoice"></i> Generar PDF combinado (<span id="contador-pdf-combinado">0</span>)
-        </button>
+        <div class="flex items-center gap-2">
+            <button type="button" id="btn-pdf-combinado-estudio" onclick="generarPdfCombinado('estudio')" disabled
+                    class="text-xs bg-gray-700 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg font-medium flex items-center gap-2"
+                    title="Elegí dos o más períodos con el check de la izquierda para juntarlos en un solo informe interno (con pasante y estado 'Por Cobrar')">
+                <i class="fas fa-file-lines"></i> PDF combinado para el estudio (<span id="contador-pdf-combinado-estudio">0</span>)
+            </button>
+            <button type="button" id="btn-pdf-combinado" onclick="generarPdfCombinado('cliente')" disabled
+                    class="text-xs bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg font-medium flex items-center gap-2"
+                    title="Elegí dos o más períodos con el check de la izquierda para juntarlos en un solo PDF para el cliente">
+                <i class="fas fa-file-invoice"></i> Generar PDF combinado (<span id="contador-pdf-combinado">0</span>)
+            </button>
+        </div>
         @endif
     </div>
     <div class="overflow-x-auto">
@@ -368,20 +375,30 @@
 @push('scripts')
 <script>
 function actualizarBotonPdfCombinado() {
-    const boton = document.getElementById('btn-pdf-combinado');
-    const contador = document.getElementById('contador-pdf-combinado');
-    if (!boton) return;
-
     const marcados = document.querySelectorAll('.chk-periodo-revisado:checked').length;
-    contador.textContent = marcados;
-    boton.disabled = marcados < 2;
+
+    [
+        ['btn-pdf-combinado', 'contador-pdf-combinado'],
+        ['btn-pdf-combinado-estudio', 'contador-pdf-combinado-estudio'],
+    ].forEach(([botonId, contadorId]) => {
+        const boton = document.getElementById(botonId);
+        const contador = document.getElementById(contadorId);
+        if (!boton) return;
+
+        contador.textContent = marcados;
+        boton.disabled = marcados < 2;
+    });
 }
 
-function generarPdfClienteCombinado() {
+function generarPdfCombinado(formato) {
     const ids = Array.from(document.querySelectorAll('.chk-periodo-revisado:checked')).map(c => c.value);
     if (ids.length < 2) return;
 
-    window.open('{{ route('reportes.pasantes.ver-cliente-combinado') }}?periodos=' + ids.join(','), '_blank');
+    const ruta = formato === 'estudio'
+        ? '{{ route('reportes.pasantes.ver-combinado') }}'
+        : '{{ route('reportes.pasantes.ver-cliente-combinado') }}';
+
+    window.open(ruta + '?periodos=' + ids.join(','), '_blank');
 }
 </script>
 @endpush

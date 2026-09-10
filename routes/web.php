@@ -301,6 +301,10 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
              ->withoutMiddleware('permission:reportes.ver')
              ->middleware('permission:reportes.pasantes')
              ->name('pasantes.ver-cliente-combinado');
+        Route::get('/pasantes/ver-combinado', [ReporteController::class, 'pasantesVerPdfCombinado'])
+             ->withoutMiddleware('permission:reportes.ver')
+             ->middleware('permission:reportes.pasantes')
+             ->name('pasantes.ver-combinado');
         Route::patch('/pasantes/{reportePasanteGenerado}/conceptos', [ReporteController::class, 'pasantesEditarConceptos'])
              ->withoutMiddleware('permission:reportes.ver')
              ->middleware('permission:reportes.pasantes')

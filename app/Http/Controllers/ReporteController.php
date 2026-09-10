@@ -547,6 +547,45 @@ class ReporteController extends Controller
         return $pdf->stream('detalle-gastos-combinado.pdf');
     }
 
+    // Igual que pasantesVerPdfClienteCombinado(), pero junta los períodos en el formato
+    // interno "Informe de rendición de cuentas" (con pasante, narrativa y estado "Por
+    // Cobrar") en vez del "Detalle Gastos Judiciales" para el cliente.
+    public function pasantesVerPdfCombinado(Request $request): Response
+    {
+        abort_if($this->esPasante(), 403);
+
+        $ids = collect(explode(',', (string) $request->query('periodos')))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter();
+
+        abort_if($ids->isEmpty(), 404);
+
+        $periodos = ReportePasanteGenerado::with('usuario')->whereIn('id', $ids)->where('revisado', true)->get();
+
+        abort_if($periodos->isEmpty(), 404);
+
+        $gastos = $periodos
+            ->flatMap(fn (ReportePasanteGenerado $p) => $this->gastosDelPeriodo($p))
+            ->unique('id');
+
+        $grupos = $this->agruparGastosPorCaso($gastos);
+
+        // Los períodos elegidos pueden ser de un solo pasante o de varios (el checklist de
+        // "Revisados" no distingue): se listan todos los nombres involucrados en vez de
+        // asumir uno solo.
+        $nombresPasantes = $periodos->pluck('usuario.name')->filter()->unique()->values();
+        $usuario = (object) ['name' => $nombresPasantes->implode(', ')];
+
+        $pdf = Pdf::loadView('reportes.pdf.pasantes', [
+            'grupos'  => $grupos,
+            'usuario' => $usuario,
+            'desde'   => $periodos->min('desde'),
+            'hasta'   => $periodos->max('hasta'),
+        ] + $this->resumenGastosPasante($gastos))->setPaper('a4');
+
+        return $pdf->stream('informe-rendicion-combinado.pdf');
+    }
+
     // Los gastos que formaron un período ya generado, exactamente como quedaron en ese
     // momento. No alcanza con "fecha en el rango y creado antes de este período": un
     // gasto puede cumplir eso y aun así ya haber sido facturado en OTRO período anterior
