@@ -21,6 +21,13 @@
 @section('content')
 
 @if($tienePropios)
+<div class="flex items-center gap-3 mb-4">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 whitespace-nowrap">
+        <i class="fas fa-coins text-amber-600"></i> Mis gastos
+    </h2>
+    <div class="flex-1 border-t border-gray-200"></div>
+</div>
+
 <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
     <p class="text-sm text-gray-500 mb-3">Mis gastos registrados — {{ auth()->user()->name }}</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -119,6 +126,13 @@
     @endforelse
 </div>
 @endif
+
+<div class="flex items-center gap-3 mt-8 mb-4">
+    <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 whitespace-nowrap">
+        <i class="fas fa-file-pdf text-red-700"></i> Reportes en PDF
+    </h2>
+    <div class="flex-1 border-t border-gray-200"></div>
+</div>
 
 @if($puedeAdministrar)
 <form method="GET" class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
