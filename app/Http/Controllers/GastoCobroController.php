@@ -33,6 +33,12 @@ class GastoCobroController extends Controller
 
         $registros = $registros->sortByDesc(fn ($r) => $r->created_at)->values();
 
+        // Las estadísticas se calculan sobre TODOS los registros que matchean el filtro
+        // (no solo la página actual), para que reflejen el filtro aplicado y no el recorte
+        // de paginación.
+        $resumen        = $this->resumenEstadisticas($registros);
+        $porTipoGasto   = $this->gastosPorTipo($registros);
+
         $porPagina = 15;
         $pagina    = (int) $request->input('page', 1);
 
@@ -45,16 +51,49 @@ class GastoCobroController extends Controller
         );
 
         return view('gastos-cobros.index', [
-            'registros'  => $paginado,
-            'tiposGasto' => TipoGasto::activos()->orderBy('nombre')->get(),
-            'clientes'   => Cliente::activos()->orderBy('nombre')->get(),
-            'tipo'       => $tipo,
+            'registros'    => $paginado,
+            'tiposGasto'   => TipoGasto::activos()->orderBy('nombre')->get(),
+            'clientes'     => Cliente::activos()->orderBy('nombre')->get(),
+            'tipo'         => $tipo,
+            'resumen'      => $resumen,
+            'porTipoGasto' => $porTipoGasto,
         ]);
+    }
+
+    private function resumenEstadisticas($registros): array
+    {
+        $totalGastos  = (float) $registros->sum('total_gastos');
+        $totalCobrado = (float) $registros->sum('total_cobrado');
+
+        return [
+            'total_registros' => $registros->count(),
+            'total_gastos'    => $totalGastos,
+            'total_cobrado'   => $totalCobrado,
+            'saldo_pendiente' => $totalGastos - $totalCobrado,
+            'pendientes'      => $registros->where('estado_pago', 'pendiente')->count(),
+            'parciales'       => $registros->where('estado_pago', 'parcial')->count(),
+            'pagados'         => $registros->where('estado_pago', 'pagado')->count(),
+        ];
+    }
+
+    // Top 5 tipos de gasto por monto, entre todos los gastos de los registros filtrados.
+    private function gastosPorTipo($registros)
+    {
+        return $registros
+            ->flatMap(fn ($r) => $r->gastos)
+            ->groupBy(fn ($g) => $g->tipo_gasto_id ?? 0)
+            ->map(fn ($gastos) => (object) [
+                'nombre' => $gastos->first()->tipoGasto?->nombre ?? 'Sin tipo',
+                'total'  => (float) $gastos->sum('monto'),
+            ])
+            ->sortByDesc('total')
+            ->values()
+            ->take(5);
     }
 
     private function queryTramites(Request $request): Builder
     {
-        return Tramite::with(['cliente', 'gastos.cobros', 'gastos.seguimiento', 'gastos.usuario', 'cobros'])
+        return Tramite::with(['cliente', 'gastos.cobros', 'gastos.seguimiento', 'gastos.usuario', 'gastos.tipoGasto', 'cobros'])
             ->withSum('gastos as total_gastos_sum', 'monto')
             ->withSum('cobros as total_cobros_sum', 'monto')
             ->when($request->filled('buscar'), fn ($q) => $q->where(function ($qq) use ($request) {
@@ -67,7 +106,7 @@ class GastoCobroController extends Controller
 
     private function queryExpedientes(Request $request): Builder
     {
-        return Expediente::with(['cliente', 'gastos.cobros', 'gastos.seguimiento', 'gastos.usuario', 'cobros'])
+        return Expediente::with(['cliente', 'gastos.cobros', 'gastos.seguimiento', 'gastos.usuario', 'gastos.tipoGasto', 'cobros'])
             ->withSum('gastos as total_gastos_sum', 'monto')
             ->withSum('cobros as total_cobros_sum', 'monto')
             ->when($request->filled('buscar'), fn ($q) => $q->where(function ($qq) use ($request) {
