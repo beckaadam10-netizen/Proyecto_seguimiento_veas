@@ -421,28 +421,24 @@
                             ->groupBy(fn ($c) => $c->lote ?? 'solo-' . $c->id)
                             ->sortByDesc(fn ($grupo) => $grupo->max('created_at'));
                     @endphp
-                    <div id="historial-cobros-{{ $item->tipo_registro }}-{{ $item->id }}" class="hidden mt-2 space-y-2 max-h-56 overflow-y-auto border rounded-lg p-3 bg-white">
+                    <div id="historial-cobros-{{ $item->tipo_registro }}-{{ $item->id }}" class="hidden mt-2 space-y-1.5 max-h-56 overflow-y-auto border rounded-lg p-3 bg-white">
                         @foreach($lotesCobrosItem as $loteId => $cobrosDelLote)
                         @php $primero = $cobrosDelLote->first(); @endphp
-                        <div class="{{ !$loop->last ? 'pb-2 border-b border-gray-100' : '' }}">
-                            <div class="flex items-center justify-between gap-3 text-xs text-gray-400 mb-1">
-                                <span>
-                                    {{ $primero->fecha->format('d/m/Y') }} · <span class="uppercase">{{ $primero->metodo_pago }}</span>
-                                    @if($primero->usuario) · {{ $primero->usuario->name }} @endif
-                                </span>
+                        <div class="flex items-center justify-between gap-3 text-sm py-1 {{ !$loop->last ? 'border-b border-gray-100' : '' }}">
+                            <span class="text-xs text-gray-500 min-w-0 truncate">
+                                {{ $primero->fecha->format('d/m/Y') }} · <span class="uppercase">{{ $primero->metodo_pago }}</span>
+                                @if($primero->usuario) · {{ $primero->usuario->name }} @endif
+                                · {{ $cobrosDelLote->count() }} {{ Str::plural('ítem', $cobrosDelLote->count()) }}
+                            </span>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <span class="text-emerald-700 font-medium">{{ number_format($cobrosDelLote->sum('monto'), 2) }} Bs</span>
                                 @if(!str($loteId)->startsWith('solo-'))
                                 <a href="{{ route($item->tipo_registro . 's.cobros.pdf', $item) }}?lote={{ $loteId }}" target="_blank"
-                                   class="text-red-600 hover:underline flex items-center gap-1 flex-shrink-0">
-                                    <i class="fas fa-file-pdf"></i> PDF
+                                   class="text-red-600 hover:underline" title="Vista previa de este cobro">
+                                    <i class="fas fa-file-pdf"></i>
                                 </a>
                                 @endif
                             </div>
-                            @foreach($cobrosDelLote as $cobro)
-                            <div class="flex items-center justify-between gap-3 text-sm py-0.5">
-                                <span class="truncate text-gray-700">{{ $cobro->gasto?->concepto ?? 'Cobro general' }}</span>
-                                <span class="text-emerald-700 font-medium flex-shrink-0">{{ number_format($cobro->monto, 2) }} Bs</span>
-                            </div>
-                            @endforeach
                         </div>
                         @endforeach
                     </div>

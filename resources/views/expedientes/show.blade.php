@@ -1238,9 +1238,13 @@
                                 <i class="fas fa-file-pdf"></i> PDF
                             </a>
                             @endif
+                            <button type="button" onclick="document.getElementById('cobro-detalle-{{ $expediente->id }}-{{ $loteId }}').classList.toggle('hidden'); this.querySelector('i').classList.toggle('fa-rotate-180')"
+                                    class="text-gray-400 hover:text-gray-600" title="Ver ítems de este cobro">
+                                <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                            </button>
                         </div>
                     </div>
-                    <div class="space-y-1">
+                    <div id="cobro-detalle-{{ $expediente->id }}-{{ $loteId }}" class="hidden space-y-1 mt-2 pt-2 border-t border-gray-100">
                         @foreach($cobrosDelLote as $cobro)
                         <div class="flex items-center justify-between gap-3 text-sm">
                             <span class="text-gray-600 truncate">{{ $cobro->gasto?->concepto ?? 'Cobro general' }}</span>
