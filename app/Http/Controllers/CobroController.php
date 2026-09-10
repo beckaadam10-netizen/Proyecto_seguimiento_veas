@@ -127,14 +127,7 @@ class CobroController extends Controller
             return 0;
         }
 
-        Cobro::create(array_merge($this->claveEntidad($entidad), [
-            'usuario_id'  => auth()->id(),
-            'monto'       => $monto,
-            'fecha'       => $base['fecha'],
-            'metodo_pago' => $base['metodo_pago'],
-        ]));
-
-        return 1;
+        return $this->distribuirCobro($entidad, $monto, $base);
     }
 
     private function cobrarAbono(Tramite|Expediente $entidad, Request $request, array $base): int
@@ -145,14 +138,57 @@ class CobroController extends Controller
             'monto.max' => 'El monto no puede superar el saldo pendiente (' . number_format($entidad->saldo_pendiente, 2) . ' Bs).',
         ]);
 
-        Cobro::create(array_merge($this->claveEntidad($entidad), [
-            'usuario_id'  => auth()->id(),
-            'monto'       => $data['monto'],
-            'fecha'       => $base['fecha'],
-            'metodo_pago' => $base['metodo_pago'],
-        ]));
+        return $this->distribuirCobro($entidad, $data['monto'], $base);
+    }
 
-        return 1;
+    // Reparte el monto cobrado entre los gastos pendientes, del más antiguo al más nuevo
+    // (FIFO), creando un Cobro por gasto que alcanza a cubrir. Así, ya sea que se cobre por
+    // ítem, en bloque o en abonos, cada gasto queda vinculado a su propio cobro y su estado
+    // "cubierto" refleja la realidad (antes, un cobro total/abono quedaba suelto sin
+    // gasto_id y los gastos que cubría seguían apareciendo como pendientes para siempre).
+    private function distribuirCobro(Tramite|Expediente $entidad, float $monto, array $base): int
+    {
+        $restante = $monto;
+        $creados  = 0;
+
+        $gastosPendientes = $entidad->gastos
+            ->sortBy([['fecha', 'asc'], ['id', 'asc']])
+            ->filter(fn ($g) => ((float) $g->monto - $g->total_cobrado) > 0.004);
+
+        foreach ($gastosPendientes as $gasto) {
+            if ($restante <= 0.004) {
+                break;
+            }
+
+            $pendienteGasto = (float) $gasto->monto - $gasto->total_cobrado;
+            $aplicar        = round(min($pendienteGasto, $restante), 2);
+
+            Cobro::create(array_merge($this->claveEntidad($entidad), [
+                'gasto_id'    => $gasto->id,
+                'usuario_id'  => auth()->id(),
+                'monto'       => $aplicar,
+                'fecha'       => $base['fecha'],
+                'metodo_pago' => $base['metodo_pago'],
+            ]));
+
+            $restante -= $aplicar;
+            $creados++;
+        }
+
+        // No debería quedar sobrante (el monto nunca supera el saldo pendiente, que es la
+        // suma de lo pendiente por gasto), pero por seguridad se registra como cobro
+        // general en vez de perderlo.
+        if ($restante > 0.004) {
+            Cobro::create(array_merge($this->claveEntidad($entidad), [
+                'usuario_id'  => auth()->id(),
+                'monto'       => round($restante, 2),
+                'fecha'       => $base['fecha'],
+                'metodo_pago' => $base['metodo_pago'],
+            ]));
+            $creados++;
+        }
+
+        return $creados;
     }
 
     private function cobrarPorItem(Tramite|Expediente $entidad, Request $request, array $base): int

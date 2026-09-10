@@ -404,6 +404,30 @@
                         @endif
                     </dl>
                 </div>
+
+                @if($item->cobros->isNotEmpty())
+                <div class="mt-3">
+                    <button type="button" onclick="document.getElementById('historial-cobros-{{ $item->tipo_registro }}-{{ $item->id }}').classList.toggle('hidden'); this.querySelector('i').classList.toggle('fa-rotate-180')"
+                            class="w-full flex items-center justify-between text-xs font-semibold text-gray-500 uppercase hover:text-gray-700">
+                        <span><i class="fas fa-clock-rotate-left mr-1"></i> Historial de cobros ({{ $item->cobros->count() }})</span>
+                        <i class="fas fa-chevron-down transition-transform"></i>
+                    </button>
+                    <div id="historial-cobros-{{ $item->tipo_registro }}-{{ $item->id }}" class="hidden mt-2 space-y-1 max-h-40 overflow-y-auto border rounded-lg p-3 bg-white">
+                        @foreach($item->cobros as $cobro)
+                        <div class="flex items-center justify-between gap-3 text-sm py-1 {{ !$loop->last ? 'border-b border-gray-100' : '' }}">
+                            <span class="min-w-0">
+                                <span class="truncate block text-gray-700">{{ $cobro->gasto?->concepto ?? 'Cobro general' }}</span>
+                                <span class="text-[11px] text-gray-400 block truncate">
+                                    {{ $cobro->fecha->format('d/m/Y') }} · <span class="uppercase">{{ $cobro->metodo_pago }}</span>
+                                    @if($cobro->usuario) · {{ $cobro->usuario->name }} @endif
+                                </span>
+                            </span>
+                            <span class="text-emerald-700 font-medium flex-shrink-0">{{ number_format($cobro->monto, 2) }} Bs</span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
             </div>
 
             <form method="POST" action="{{ route('cobros.store') }}" class="p-6 pt-3 space-y-4"

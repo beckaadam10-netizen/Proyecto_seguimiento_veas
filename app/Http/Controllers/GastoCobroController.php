@@ -131,7 +131,7 @@ class GastoCobroController extends Controller
 
     private function queryTramites(Request $request): Builder
     {
-        return Tramite::with(['cliente', 'gastos.cobros', 'gastos.seguimiento', 'gastos.usuario', 'gastos.tipoGasto', 'cobros'])
+        return Tramite::with(['cliente', 'gastos.cobros', 'gastos.seguimiento', 'gastos.usuario', 'gastos.tipoGasto', 'cobros.gasto', 'cobros.usuario'])
             ->withSum('gastos as total_gastos_sum', 'monto')
             ->withSum('cobros as total_cobros_sum', 'monto')
             ->when($request->filled('buscar'), fn ($q) => $q->where(function ($qq) use ($request) {
@@ -144,7 +144,7 @@ class GastoCobroController extends Controller
 
     private function queryExpedientes(Request $request): Builder
     {
-        return Expediente::with(['cliente', 'gastos.cobros', 'gastos.seguimiento', 'gastos.usuario', 'gastos.tipoGasto', 'cobros'])
+        return Expediente::with(['cliente', 'gastos.cobros', 'gastos.seguimiento', 'gastos.usuario', 'gastos.tipoGasto', 'cobros.gasto', 'cobros.usuario'])
             ->withSum('gastos as total_gastos_sum', 'monto')
             ->withSum('cobros as total_cobros_sum', 'monto')
             ->when($request->filled('buscar'), fn ($q) => $q->where(function ($qq) use ($request) {
