@@ -126,6 +126,9 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     Route::get('gastos-cobros', [GastoCobroController::class, 'index'])
          ->middleware('permission:gastos_cobros.ver')
          ->name('gastos-cobros.index');
+    Route::get('gastos-cobros/pdf', [GastoCobroController::class, 'pdf'])
+         ->middleware('permission:gastos_cobros.ver')
+         ->name('gastos-cobros.pdf');
 
     // Gastos (siempre dentro del contexto de un trámite, sin index/show propios)
     Route::resource('gastos', GastoController::class)->only(['create', 'store'])->middleware('permission:gastos_cobros.crear');

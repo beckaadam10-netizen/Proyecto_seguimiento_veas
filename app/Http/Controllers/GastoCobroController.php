@@ -6,8 +6,10 @@ use App\Models\Cliente;
 use App\Models\Expediente;
 use App\Models\TipoGasto;
 use App\Models\Tramite;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
@@ -15,23 +17,7 @@ class GastoCobroController extends Controller
 {
     public function index(Request $request): View
     {
-        $tipo = $request->input('tipo');
-
-        $registros = collect();
-
-        if ($tipo !== 'expediente') {
-            $registros = $registros->concat(
-                $this->queryTramites($request)->get()->map(fn (Tramite $t) => $this->normalizarTramite($t))
-            );
-        }
-
-        if ($tipo !== 'tramite') {
-            $registros = $registros->concat(
-                $this->queryExpedientes($request)->get()->map(fn (Expediente $e) => $this->normalizarExpediente($e))
-            );
-        }
-
-        $registros = $registros->sortByDesc(fn ($r) => $r->created_at)->values();
+        $registros = $this->registrosFiltrados($request);
 
         // Las estadísticas se calculan sobre TODOS los registros que matchean el filtro
         // (no solo la página actual), para que reflejen el filtro aplicado y no el recorte
@@ -54,9 +40,61 @@ class GastoCobroController extends Controller
             'registros'    => $paginado,
             'tiposGasto'   => TipoGasto::activos()->orderBy('nombre')->get(),
             'clientes'     => Cliente::activos()->orderBy('nombre')->get(),
-            'tipo'         => $tipo,
+            'tipo'         => $request->input('tipo'),
             'resumen'      => $resumen,
             'porTipoGasto' => $porTipoGasto,
+        ]);
+    }
+
+    public function pdf(Request $request): Response
+    {
+        $registros = $this->registrosFiltrados($request);
+
+        $pdf = Pdf::loadView('gastos-cobros.pdf', [
+            'registros'    => $registros,
+            'resumen'      => $this->resumenEstadisticas($registros),
+            'porTipoGasto' => $this->gastosPorTipo($registros),
+            'filtros'      => $this->etiquetasFiltros($request),
+        ])->setPaper('a4');
+
+        return $pdf->download('reporte-gastos-cobros.pdf');
+    }
+
+    private function registrosFiltrados(Request $request)
+    {
+        $tipo = $request->input('tipo');
+
+        $registros = collect();
+
+        if ($tipo !== 'expediente') {
+            $registros = $registros->concat(
+                $this->queryTramites($request)->get()->map(fn (Tramite $t) => $this->normalizarTramite($t))
+            );
+        }
+
+        if ($tipo !== 'tramite') {
+            $registros = $registros->concat(
+                $this->queryExpedientes($request)->get()->map(fn (Expediente $e) => $this->normalizarExpediente($e))
+            );
+        }
+
+        return $registros->sortByDesc(fn ($r) => $r->created_at)->values();
+    }
+
+    private function etiquetasFiltros(Request $request): array
+    {
+        $cliente = $request->filled('cliente_id') ? Cliente::find($request->cliente_id) : null;
+
+        return array_filter([
+            'Buscar'          => $request->buscar,
+            'Tipo'            => $request->tipo === 'tramite' ? 'Trámites' : ($request->tipo === 'expediente' ? 'Expedientes' : null),
+            'Cliente'         => $cliente?->nombre_completo,
+            'Estado de pago'  => match ($request->estado_pago) {
+                'pendiente' => 'Pendiente',
+                'parcial'   => 'Parcialmente pagado',
+                'pagado'    => 'Pagado',
+                default     => null,
+            },
         ]);
     }
 

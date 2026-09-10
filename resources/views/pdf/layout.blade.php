@@ -105,6 +105,10 @@
             background: #eef2ff;
             color: #4338ca;
         }
+        .badge-rojo { background: #fee2e2; color: #b91c1c; }
+        .badge-ambar { background: #fef3c7; color: #92400e; }
+        .badge-verde { background: #d1fae5; color: #047857; }
+        .badge-gris { background: #f4f4f5; color: #52525b; }
         .vacio {
             color: #a1a1aa;
             font-style: italic;

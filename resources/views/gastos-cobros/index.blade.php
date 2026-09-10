@@ -3,6 +3,13 @@
 @section('title', 'Gastos y Cobros')
 @section('header', 'Gastos y Cobros')
 
+@section('header-actions')
+    <a href="{{ route('gastos-cobros.pdf', request()->query()) }}"
+       class="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+        <i class="fas fa-file-pdf"></i> Generar PDF
+    </a>
+@endsection
+
 @section('content')
 
 @php
@@ -10,56 +17,81 @@
         ? min(100, round(($resumen['total_cobrado'] / $resumen['total_gastos']) * 100))
         : ($resumen['total_cobrado'] > 0 ? 100 : 0);
     $maxTipoGasto = $porTipoGasto->max('total') ?: 1;
+    $totalEstados = $resumen['pendientes'] + $resumen['parciales'] + $resumen['pagados'];
 @endphp
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
-    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-5">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center text-xl flex-shrink-0">
-                    <i class="fas fa-coins"></i>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-gray-800">{{ number_format($resumen['total_gastos'], 2) }} Bs</p>
-                    <p class="text-sm text-gray-500">Total gastado (filtro actual)</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-xl flex-shrink-0">
-                    <i class="fas fa-hand-holding-dollar"></i>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-gray-800">{{ number_format($resumen['total_cobrado'], 2) }} Bs</p>
-                    <p class="text-sm text-gray-500">Total cobrado (filtro actual)</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 {{ $resumen['saldo_pendiente'] > 0 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600' }} rounded-xl flex items-center justify-center text-xl flex-shrink-0">
-                    <i class="fas fa-scale-balanced"></i>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold {{ $resumen['saldo_pendiente'] > 0 ? 'text-red-600' : 'text-gray-800' }}">
-                        {{ number_format($resumen['saldo_pendiente'], 2) }} Bs
-                    </p>
-                    <p class="text-sm text-gray-500">Saldo pendiente</p>
-                </div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+    <div class="relative bg-white rounded-xl shadow-sm ring-1 ring-black/5 p-5 overflow-hidden">
+        <div class="absolute inset-y-0 left-0 w-1 bg-amber-500"></div>
+        <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total gastado</p>
+            <div class="w-9 h-9 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center text-sm">
+                <i class="fas fa-coins"></i>
             </div>
         </div>
-
-        <div>
-            <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
-                <span>Cobrado sobre lo gastado</span>
-                <span class="font-semibold text-gray-700">{{ $porcentajeCobrado }}%</span>
-            </div>
-            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div class="h-2 rounded-full {{ $porcentajeCobrado >= 100 ? 'bg-green-500' : 'bg-emerald-500' }}" style="width: {{ $porcentajeCobrado }}%"></div>
-            </div>
-        </div>
+        <p class="text-2xl font-bold text-gray-900 tracking-tight">{{ number_format($resumen['total_gastos'], 2) }} <span class="text-sm font-medium text-gray-400">Bs</span></p>
+        <p class="text-xs text-gray-400 mt-1">Según el filtro actual</p>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm p-5">
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Estado de pago ({{ $resumen['total_registros'] }})</p>
-        <div class="space-y-3">
+    <div class="relative bg-white rounded-xl shadow-sm ring-1 ring-black/5 p-5 overflow-hidden">
+        <div class="absolute inset-y-0 left-0 w-1 bg-emerald-500"></div>
+        <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total cobrado</p>
+            <div class="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center text-sm">
+                <i class="fas fa-hand-holding-dollar"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-bold text-gray-900 tracking-tight">{{ number_format($resumen['total_cobrado'], 2) }} <span class="text-sm font-medium text-gray-400">Bs</span></p>
+        <p class="text-xs text-gray-400 mt-1">Según el filtro actual</p>
+    </div>
+
+    <div class="relative bg-white rounded-xl shadow-sm ring-1 ring-black/5 p-5 overflow-hidden">
+        <div class="absolute inset-y-0 left-0 w-1 {{ $resumen['saldo_pendiente'] > 0 ? 'bg-red-500' : 'bg-gray-300' }}"></div>
+        <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Saldo pendiente</p>
+            <div class="w-9 h-9 {{ $resumen['saldo_pendiente'] > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500' }} rounded-lg flex items-center justify-center text-sm">
+                <i class="fas fa-scale-balanced"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-bold {{ $resumen['saldo_pendiente'] > 0 ? 'text-red-600' : 'text-gray-900' }} tracking-tight">
+            {{ number_format($resumen['saldo_pendiente'], 2) }} <span class="text-sm font-medium text-gray-400">Bs</span>
+        </p>
+        <p class="text-xs text-gray-400 mt-1">Gastado menos cobrado</p>
+    </div>
+
+    <div class="relative bg-white rounded-xl shadow-sm ring-1 ring-black/5 p-5 overflow-hidden">
+        <div class="absolute inset-y-0 left-0 w-1 bg-brand-600"></div>
+        <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Cobrado / gastado</p>
+            <div class="w-9 h-9 bg-brand-50 text-brand-700 rounded-lg flex items-center justify-center text-sm">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+        </div>
+        <p class="text-2xl font-bold text-gray-900 tracking-tight">{{ $porcentajeCobrado }}<span class="text-sm font-medium text-gray-400">%</span></p>
+        <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mt-2.5">
+            <div class="h-1.5 rounded-full {{ $porcentajeCobrado >= 100 ? 'bg-emerald-500' : 'bg-brand-600' }}" style="width: {{ $porcentajeCobrado }}%"></div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-6">
+    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm ring-1 ring-black/5 p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <i class="fas fa-layer-group text-gray-400"></i> Estado de pago
+            </h3>
+            <span class="text-xs text-gray-400">{{ $resumen['total_registros'] }} registros</span>
+        </div>
+
+        @if($totalEstados > 0)
+        <div class="w-full h-2.5 rounded-full overflow-hidden flex mb-4">
+            <div class="h-2.5 bg-red-500" style="width: {{ round($resumen['pendientes'] / $totalEstados * 100) }}%"></div>
+            <div class="h-2.5 bg-amber-500" style="width: {{ round($resumen['parciales'] / $totalEstados * 100) }}%"></div>
+            <div class="h-2.5 bg-emerald-500" style="width: {{ round($resumen['pagados'] / $totalEstados * 100) }}%"></div>
+        </div>
+        @endif
+
+        <div class="space-y-2.5">
             <div class="flex items-center justify-between">
                 <span class="flex items-center gap-2 text-sm text-gray-600">
                     <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Pendiente
@@ -78,36 +110,39 @@
                 </span>
                 <span class="text-sm font-semibold text-gray-800">{{ $resumen['pagados'] }}</span>
             </div>
-            @php $totalEstados = $resumen['pendientes'] + $resumen['parciales'] + $resumen['pagados']; @endphp
-            @if($totalEstados > 0)
-            <div class="w-full h-2 rounded-full overflow-hidden flex mt-1">
-                <div class="h-2 bg-red-500" style="width: {{ round($resumen['pendientes'] / $totalEstados * 100) }}%"></div>
-                <div class="h-2 bg-amber-500" style="width: {{ round($resumen['parciales'] / $totalEstados * 100) }}%"></div>
-                <div class="h-2 bg-emerald-500" style="width: {{ round($resumen['pagados'] / $totalEstados * 100) }}%"></div>
-            </div>
-            @endif
         </div>
     </div>
-</div>
 
-@if($porTipoGasto->isNotEmpty())
-<div class="bg-white rounded-xl shadow-sm p-5 mb-6">
-    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Top 5 tipos de gasto (filtro actual)</p>
-    <div class="space-y-3">
-        @foreach($porTipoGasto as $t)
-        <div>
-            <div class="flex items-center justify-between text-sm mb-1">
-                <span class="text-gray-700">{{ $t->nombre }}</span>
-                <span class="font-semibold text-amber-700">{{ number_format($t->total, 2) }} Bs</span>
-            </div>
-            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div class="h-2 rounded-full bg-amber-500" style="width: {{ max(3, round($t->total / $maxTipoGasto * 100)) }}%"></div>
-            </div>
+    <div class="lg:col-span-3 bg-white rounded-xl shadow-sm ring-1 ring-black/5 p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <i class="fas fa-ranking-star text-gray-400"></i> Top tipos de gasto
+            </h3>
+            <span class="text-xs text-gray-400">Filtro actual</span>
         </div>
-        @endforeach
+
+        @if($porTipoGasto->isNotEmpty())
+        <div class="space-y-3">
+            @foreach($porTipoGasto as $t)
+            <div class="flex items-center gap-3">
+                <span class="w-5 h-5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{{ $loop->iteration }}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between text-sm mb-1">
+                        <span class="text-gray-700 truncate">{{ $t->nombre }}</span>
+                        <span class="font-semibold text-amber-700 flex-shrink-0 ml-2">{{ number_format($t->total, 2) }} Bs</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div class="h-1.5 rounded-full bg-amber-500" style="width: {{ max(3, round($t->total / $maxTipoGasto * 100)) }}%"></div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @else
+        <p class="text-sm text-gray-400 text-center py-6">Sin gastos para el filtro actual.</p>
+        @endif
     </div>
 </div>
-@endif
 
 <form method="GET" class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
     <div class="flex-1 min-w-48">
