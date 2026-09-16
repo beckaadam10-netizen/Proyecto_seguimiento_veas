@@ -63,6 +63,10 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     // Clientes
     recursoConPermisos('clientes', ClienteController::class, 'clientes');
 
+    Route::get('clientes/{cliente}/estado-cuenta/pdf', [ClienteController::class, 'estadoCuentaPdf'])
+         ->middleware('permission:gastos_cobros.ver')
+         ->name('clientes.estado-cuenta.pdf');
+
     // Abogados
     recursoConPermisos('abogados', AbogadoController::class, 'abogados');
 

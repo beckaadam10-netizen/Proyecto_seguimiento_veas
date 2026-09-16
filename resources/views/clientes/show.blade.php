@@ -4,6 +4,12 @@
 @section('header', $cliente->nombre_completo)
 
 @section('header-actions')
+    @if(auth()->user()->puede('gastos_cobros', 'ver'))
+    <a href="{{ route('clientes.estado-cuenta.pdf', $cliente) }}" target="_blank"
+       class="bg-white border hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+        <i class="fas fa-file-invoice-dollar"></i> Estado de cuenta (PDF)
+    </a>
+    @endif
     @if(auth()->user()->puede('expedientes', 'crear'))
     <a href="{{ route('expedientes.index', ['nuevo' => 1, 'cliente_id' => $cliente->id]) }}"
        class="bg-brand-600 hover:bg-brand-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2">
@@ -66,6 +72,12 @@
                             {{ $cliente->activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
                             {{ $cliente->activo ? 'Activo' : 'Inactivo' }}
                         </span>
+                    </dd>
+                </div>
+                <div class="flex justify-between pt-2 border-t">
+                    <dt class="text-gray-500">Saldo pendiente</dt>
+                    <dd class="font-semibold {{ $saldoPendiente > 0 ? 'text-red-600' : 'text-green-600' }}">
+                        Bs {{ number_format($saldoPendiente, 2) }}
                     </dd>
                 </div>
             </dl>

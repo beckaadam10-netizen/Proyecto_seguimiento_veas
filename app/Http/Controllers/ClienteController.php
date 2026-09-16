@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Expediente;
+use App\Models\Tramite;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class ClienteController extends Controller
@@ -71,10 +75,51 @@ class ClienteController extends Controller
     public function show(Cliente $cliente): View
     {
         $cliente->load([
-            'expedientes' => fn ($q) => $q->orderByDesc('created_at'),
-            'tramites'    => fn ($q) => $q->orderByDesc('created_at'),
+            'expedientes' => fn ($q) => $q->orderByDesc('created_at')->with(['gastos', 'cobros']),
+            'tramites'    => fn ($q) => $q->orderByDesc('created_at')->with(['gastos', 'cobros']),
         ]);
-        return view('clientes.show', compact('cliente'));
+
+        $saldoPendiente = $cliente->expedientes->sum('saldo_pendiente') + $cliente->tramites->sum('saldo_pendiente');
+
+        return view('clientes.show', compact('cliente', 'saldoPendiente'));
+    }
+
+    // Estado de cuenta del cliente: resumen de saldo pendiente por cada expediente/trámite,
+    // para entregarle al cliente. Se genera al vuelo, igual que los comprobantes de cobro.
+    public function estadoCuentaPdf(Cliente $cliente): Response
+    {
+        $cliente->load([
+            'expedientes.gastos.cobros', 'expedientes.cobros',
+            'tramites.gastos.cobros', 'tramites.cobros',
+        ]);
+
+        $registros = $cliente->expedientes
+            ->map(fn (Expediente $e) => (object) [
+                'codigo_display'  => $e->numero,
+                'titulo_display'  => $e->caratula,
+                'total_gastos'    => $e->total_gastos,
+                'total_cobrado'   => $e->total_cobrado,
+                'saldo_pendiente' => $e->saldo_pendiente,
+                'gastos'          => $e->gastos,
+            ])
+            ->concat($cliente->tramites->map(fn (Tramite $t) => (object) [
+                'codigo_display'  => $t->codigo,
+                'titulo_display'  => $t->nombre,
+                'total_gastos'    => $t->total_gastos,
+                'total_cobrado'   => $t->total_cobrado,
+                'saldo_pendiente' => $t->saldo_pendiente,
+                'gastos'          => $t->gastos,
+            ]));
+
+        abort_if($registros->isEmpty(), 404);
+
+        $pdf = Pdf::loadView('clientes.estado-cuenta-pdf', [
+            'cliente'        => $cliente,
+            'registros'      => $registros,
+            'totalPendiente' => (float) $registros->sum('saldo_pendiente'),
+        ])->setPaper('a4');
+
+        return $pdf->stream("estado-cuenta-{$cliente->id}.pdf");
     }
 
     public function edit(Cliente $cliente): View
