@@ -4,7 +4,10 @@ namespace App\Console\Commands;
 
 use App\Models\Bitacora;
 use App\Models\Cobro;
+use App\Models\Expediente;
 use App\Models\Gasto;
+use App\Models\Seguimiento;
+use App\Models\Tramite;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -67,7 +70,11 @@ class RecuperarGastosBorrados extends Command
                 continue;
             }
 
-            $caso = $original['expediente_id'] ? "Expediente #{$original['expediente_id']}" : "Trámite #{$original['tramite_id']}";
+            $caso = $original['expediente_id']
+                ? 'Expediente ' . (Expediente::withTrashed()->find($original['expediente_id'])?->numero ?? "#{$original['expediente_id']}")
+                : 'Trámite ' . (Tramite::find($original['tramite_id'])?->codigo ?? "#{$original['tramite_id']}");
+            $actuacion = $original['seguimiento_id'] ? Seguimiento::find($original['seguimiento_id'])?->titulo : null;
+            $caso .= $actuacion ? " · actuación \"{$actuacion}\"" : '';
             $detalle = "{$caso} · gasto #{$gastoOriginalId} \"{$original['concepto']}\" ({$original['monto']} Bs, " . Carbon::parse($original['fecha'])->format('d/m/Y') . ')';
 
             if (Gasto::whereKey($gastoOriginalId)->exists()) {

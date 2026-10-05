@@ -6,6 +6,8 @@ use App\Models\Bitacora;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class BitacoraController extends Controller
@@ -41,5 +43,37 @@ class BitacoraController extends Controller
 
         return redirect()->route('bitacora.index')
             ->with('success', "Se eliminaron {$borrados} registro(s) anteriores al " . $corte->format('d/m/Y') . ".");
+    }
+
+    // Versión web de app:recuperar-gastos-borrados, para cuando no hay acceso por SSH al
+    // servidor. Primero se muestra lo que haría (--dry-run) y solo un administrador puede
+    // aplicarlo. Usa la bitácora como fuente: hay que correrlo antes de limpiarla.
+    public function recuperarGastos(): View
+    {
+        abort_unless(auth()->user()->esAdmin(), 403);
+
+        Artisan::call('app:recuperar-gastos-borrados', ['--dry-run' => true]);
+
+        return view('bitacora.recuperar-gastos', [
+            'salida'   => $this->limpiarSalida(Artisan::output()),
+            'aplicado' => session('recuperacion_aplicada'),
+        ]);
+    }
+
+    public function recuperarGastosAplicar(): RedirectResponse
+    {
+        abort_unless(auth()->user()->esAdmin(), 403);
+
+        DB::transaction(fn () => Artisan::call('app:recuperar-gastos-borrados'));
+
+        return redirect()->route('bitacora.recuperar-gastos')
+            ->with('success', 'Reparación aplicada.')
+            ->with('recuperacion_aplicada', $this->limpiarSalida(Artisan::output()));
+    }
+
+    private function limpiarSalida(string $salida): string
+    {
+        // Saca los códigos de color de la consola.
+        return trim(preg_replace('/\e\[[\d;]*m/', '', $salida));
     }
 }

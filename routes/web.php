@@ -270,6 +270,12 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     Route::delete('bitacora/limpiar', [BitacoraController::class, 'limpiar'])
          ->middleware('permission:bitacora.eliminar')
          ->name('bitacora.limpiar');
+    Route::get('bitacora/recuperar-gastos', [BitacoraController::class, 'recuperarGastos'])
+         ->middleware('permission:bitacora.ver')
+         ->name('bitacora.recuperar-gastos');
+    Route::post('bitacora/recuperar-gastos', [BitacoraController::class, 'recuperarGastosAplicar'])
+         ->middleware('permission:bitacora.ver')
+         ->name('bitacora.recuperar-gastos.aplicar');
 
     // Reportes
     Route::prefix('reportes')->name('reportes.')->middleware('permission:reportes.ver')->group(function () {

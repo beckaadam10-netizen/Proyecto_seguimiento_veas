@@ -4,6 +4,13 @@
 @section('header', 'Bitácora de Auditoría')
 
 @section('header-actions')
+    <div class="flex items-center gap-3 flex-wrap">
+    @if(auth()->user()->esAdmin())
+    <a href="{{ route('bitacora.recuperar-gastos') }}"
+       class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+        <i class="fas fa-screwdriver-wrench"></i> Reparar gastos borrados
+    </a>
+    @endif
     <form method="POST" action="{{ route('bitacora.limpiar') }}"
           onsubmit="return confirm('¿Eliminar todos los registros de bitácora anteriores a la antigüedad indicada? Esta acción no se puede deshacer.');"
           class="flex items-center gap-2">
@@ -17,6 +24,7 @@
             <i class="fas fa-broom"></i> Limpiar
         </button>
     </form>
+    </div>
 @endsection
 
 @section('content')
