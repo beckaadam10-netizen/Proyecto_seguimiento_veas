@@ -66,5 +66,68 @@
         </button>
     </form>
     @endunless
+
+    @if($caso && $cobrosSueltos->isNotEmpty())
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-5 py-3 border-b font-semibold text-gray-700 text-sm">
+            <i class="fas fa-hand-pointer mr-1"></i> Reparación manual de este caso
+        </div>
+        <div class="p-5 text-sm text-gray-600 space-y-1 border-b">
+            <p>Para los cobros que la bitácora no puede resolver, elegí qué era cada uno:</p>
+            <ul class="list-disc pl-5 space-y-0.5">
+                <li><strong>Pagó un gasto pendiente:</strong> el gasto se borró y se volvió a crear, y ahora figura pendiente aunque ya se cobró.</li>
+                <li><strong>Restaurar el gasto borrado:</strong> el gasto ya no existe. Se vuelve a cargar con el monto del cobro y la fecha de alta del cobro (no aparece como gasto nuevo en el Reporte de Pasantes).</li>
+                <li><strong>Dejar como está:</strong> era un cobro general de verdad, o todavía no sabés qué era.</li>
+            </ul>
+            <p class="text-xs text-gray-400">El concepto lo podés sacar del comprobante que se le dio al cliente ese día o de la bitácora.</p>
+        </div>
+
+        <form method="POST" action="{{ route('bitacora.recuperar-gastos.manual') }}"
+              onsubmit="return confirm('¿Aplicar la reparación manual elegida? Conviene tener una copia de la base de datos antes.');">
+            @csrf
+            <input type="hidden" name="caso" value="{{ $caso }}">
+
+            <div class="divide-y">
+                @foreach($cobrosSueltos as $cobro)
+                <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                    <div class="text-sm">
+                        <p class="font-semibold text-gray-800">Cobro #{{ $cobro->id }} — {{ number_format($cobro->monto, 2) }} Bs</p>
+                        <p class="text-xs text-gray-500">{{ $cobro->fecha->format('d/m/Y') }} · {{ strtoupper($cobro->metodo_pago) }}</p>
+                    </div>
+                    <div class="md:col-span-2 space-y-2">
+                        <select name="cobros[{{ $cobro->id }}][accion]"
+                                onchange="this.closest('div').querySelector('.restaurar').classList.toggle('hidden', this.value !== 'restaurar')"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Dejar como está</option>
+                            @foreach($gastosPendientes as $g)
+                                <option value="gasto-{{ $g->id }}" @disabled((float) $cobro->monto > $g->pendiente + 0.004)>
+                                    Pagó: {{ $g->concepto }} · {{ $g->fecha->format('d/m/Y') }}{{ $g->seguimiento ? ' · ' . $g->seguimiento->titulo : '' }} · falta {{ number_format($g->pendiente, 2) }} Bs
+                                </option>
+                            @endforeach
+                            <option value="restaurar">Restaurar el gasto borrado ({{ number_format($cobro->monto, 2) }} Bs)</option>
+                        </select>
+                        <div class="restaurar hidden grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <input type="text" name="cobros[{{ $cobro->id }}][concepto]" maxlength="200" placeholder="Concepto del gasto borrado"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <select name="cobros[{{ $cobro->id }}][seguimiento_id]" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                                <option value="">Sin actuación</option>
+                                @foreach($actuaciones as $a)
+                                    <option value="{{ $a->id }}">{{ $a->titulo }} · {{ $a->fecha_actuacion->format('d/m/Y') }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+            <div class="p-5 border-t">
+                <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-lg font-medium">
+                    <i class="fas fa-check mr-1"></i> Aplicar reparación manual
+                </button>
+            </div>
+        </form>
+    </div>
+    @endif
 </div>
 @endsection

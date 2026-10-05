@@ -276,6 +276,9 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     Route::post('bitacora/recuperar-gastos', [BitacoraController::class, 'recuperarGastosAplicar'])
          ->middleware('permission:bitacora.ver')
          ->name('bitacora.recuperar-gastos.aplicar');
+    Route::post('bitacora/recuperar-gastos/manual', [BitacoraController::class, 'recuperarGastosManual'])
+         ->middleware('permission:bitacora.ver')
+         ->name('bitacora.recuperar-gastos.manual');
 
     // Reportes
     Route::prefix('reportes')->name('reportes.')->middleware('permission:reportes.ver')->group(function () {

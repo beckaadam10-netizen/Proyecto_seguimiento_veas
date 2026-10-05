@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Bitacora;
 use App\Models\Cobro;
 use App\Models\Expediente;
+use App\Models\Gasto;
+use App\Models\Seguimiento;
 use App\Models\Tramite;
 use App\Models\User;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -66,7 +69,111 @@ class BitacoraController extends Controller
             'aplicado' => session('recuperacion_aplicada'),
             'casos'    => $this->casosAfectados(),
             'caso'     => $caso['clave'],
+        ] + $this->datosReparacionManual($caso));
+    }
+
+    // Cuando la bitácora no tiene los datos (cobros "que no figuran"), un administrador
+    // decide a mano qué era cada cobro sin gasto: el gasto pendiente que en realidad pagó
+    // (ej. un gasto que se borró y se volvió a crear), o el gasto borrado que hay que
+    // restaurar, con su concepto.
+    public function recuperarGastosManual(Request $request): RedirectResponse
+    {
+        abort_unless(auth()->user()->esAdmin(), 403);
+
+        $caso = $this->casoElegido($request);
+        abort_unless($caso['clave'], 404);
+
+        $datos = $this->datosReparacionManual($caso);
+        $cobros = $datos['cobrosSueltos']->keyBy('id');
+        $pendientePorGasto = $datos['gastosPendientes']->mapWithKeys(fn (Gasto $g) => [$g->id => $g->pendiente]);
+        $seguimientos = $datos['actuaciones']->keyBy('id');
+
+        $request->validate([
+            'cobros'                => 'required|array',
+            'cobros.*.accion'       => 'nullable|string',
+            'cobros.*.concepto'     => 'nullable|string|max:200',
+            'cobros.*.seguimiento_id' => 'nullable|integer',
         ]);
+
+        $resultado = [];
+
+        DB::transaction(function () use ($request, $cobros, &$pendientePorGasto, $seguimientos, &$resultado) {
+            foreach ($request->input('cobros') as $cobroId => $fila) {
+                $cobro  = $cobros->get((int) $cobroId);
+                $accion = $fila['accion'] ?? '';
+
+                if (! $cobro || $accion === '') {
+                    continue;
+                }
+
+                if (preg_match('/^gasto-(\d+)$/', $accion, $m)) {
+                    $gastoId = (int) $m[1];
+                    $pendiente = $pendientePorGasto[$gastoId] ?? null;
+
+                    if ($pendiente === null || (float) $cobro->monto > $pendiente + 0.004) {
+                        throw ValidationException::withMessages([
+                            'cobros' => "El cobro #{$cobro->id} (" . number_format($cobro->monto, 2) . ' Bs) es mayor que lo que le falta cobrar al gasto elegido.',
+                        ]);
+                    }
+
+                    $cobro->update(['gasto_id' => $gastoId]);
+                    $pendientePorGasto[$gastoId] = $pendiente - (float) $cobro->monto;
+                    $resultado[] = "Cobro #{$cobro->id} (" . number_format($cobro->monto, 2) . " Bs): vinculado al gasto #{$gastoId}.";
+                } elseif ($accion === 'restaurar') {
+                    $concepto = trim($fila['concepto'] ?? '');
+
+                    if ($concepto === '') {
+                        throw ValidationException::withMessages([
+                            'cobros' => "Escribí el concepto del gasto a restaurar para el cobro #{$cobro->id}.",
+                        ]);
+                    }
+
+                    $seguimiento = $seguimientos->get((int) ($fila['seguimiento_id'] ?? 0));
+
+                    // El gasto restaurado es el que se pagó con este cobro: mismo monto, y
+                    // su fecha de alta es la del cobro (no hoy), para que no aparezca como
+                    // un gasto nuevo en el Reporte de Pasantes. Le pertenece a quien
+                    // registró la actuación, si se eligió una.
+                    $gasto = Gasto::create([
+                        'expediente_id'  => $cobro->expediente_id,
+                        'tramite_id'     => $cobro->tramite_id,
+                        'seguimiento_id' => $seguimiento?->id,
+                        'usuario_id'     => $seguimiento?->usuario_id,
+                        'concepto'       => $concepto,
+                        'monto'          => $cobro->monto,
+                        'fecha'          => $seguimiento?->fecha_actuacion ?? $cobro->fecha,
+                    ]);
+                    Gasto::whereKey($gasto->id)->update(['created_at' => $cobro->created_at]);
+
+                    $cobro->update(['gasto_id' => $gasto->id]);
+                    $resultado[] = "Cobro #{$cobro->id} (" . number_format($cobro->monto, 2) . " Bs): restaurado el gasto #{$gasto->id} \"{$concepto}\".";
+                }
+            }
+        });
+
+        return redirect()->route('bitacora.recuperar-gastos', ['caso' => $caso['clave']])
+            ->with('success', $resultado ? 'Reparación manual aplicada.' : 'No se eligió ningún cambio.')
+            ->with('recuperacion_aplicada', implode("\n", $resultado));
+    }
+
+    private function datosReparacionManual(array $caso): array
+    {
+        if (! $caso['clave']) {
+            return ['cobrosSueltos' => collect(), 'gastosPendientes' => collect(), 'actuaciones' => collect()];
+        }
+
+        [$columna, $id] = [array_key_first($caso['opciones']) === '--expediente' ? 'expediente_id' : 'tramite_id', reset($caso['opciones'])];
+
+        $gastosPendientes = Gasto::with(['cobros', 'seguimiento'])->where($columna, $id)->orderBy('fecha')->get()
+            ->each(fn (Gasto $g) => $g->pendiente = round((float) $g->monto - $g->total_cobrado, 2))
+            ->filter(fn (Gasto $g) => $g->pendiente > 0.004)
+            ->values();
+
+        return [
+            'cobrosSueltos'    => Cobro::whereNull('gasto_id')->where($columna, $id)->orderBy('id')->get(),
+            'gastosPendientes' => $gastosPendientes,
+            'actuaciones'      => Seguimiento::where($columna, $id)->orderByDesc('fecha_actuacion')->get(['id', 'titulo', 'fecha_actuacion', 'usuario_id']),
+        ];
     }
 
     public function recuperarGastosAplicar(Request $request): RedirectResponse
