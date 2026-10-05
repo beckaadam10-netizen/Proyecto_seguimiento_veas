@@ -26,7 +26,10 @@ use Illuminate\Support\Facades\DB;
 //   - Si no se volvió a crear, se restaura el gasto original con su mismo id y datos.
 class RecuperarGastosBorrados extends Command
 {
-    protected $signature = 'app:recuperar-gastos-borrados {--dry-run : Solo mostrar qué se haría, sin escribir nada}';
+    protected $signature = 'app:recuperar-gastos-borrados
+        {--dry-run : Solo mostrar qué se haría, sin escribir nada}
+        {--expediente= : Reparar solo este expediente (id)}
+        {--tramite= : Reparar solo este trámite (id)}';
 
     protected $description = 'Recupera, desde la bitácora, los gastos borrados al editar actuaciones y les vuelve a vincular sus cobros';
 
@@ -34,7 +37,11 @@ class RecuperarGastosBorrados extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
 
-        $sueltos = Cobro::whereNull('gasto_id')->orderBy('id')->get();
+        $sueltos = Cobro::whereNull('gasto_id')
+            ->when($this->option('expediente'), fn ($q, $id) => $q->where('expediente_id', $id))
+            ->when($this->option('tramite'), fn ($q, $id) => $q->where('tramite_id', $id))
+            ->orderBy('id')
+            ->get();
 
         if ($sueltos->isEmpty()) {
             $this->info('No hay cobros sin gasto: no hay nada que recuperar.');

@@ -27,6 +27,18 @@
         </p>
     </div>
 
+    <form method="GET" class="bg-white rounded-xl shadow-sm p-4 flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-[16rem]">
+            <label class="block text-xs text-gray-500 mb-1">Caso a reparar</label>
+            <select name="caso" onchange="this.form.submit()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <option value="">Todos los casos afectados ({{ count($casos) }})</option>
+                @foreach($casos as $clave => $etiqueta)
+                    <option value="{{ $clave }}" {{ $caso === $clave ? 'selected' : '' }}>{{ $etiqueta }}</option>
+                @endforeach
+            </select>
+        </div>
+    </form>
+
     @if($aplicado)
     <div class="bg-white rounded-xl shadow-sm overflow-hidden">
         <div class="px-5 py-3 border-b bg-emerald-50 text-emerald-800 font-semibold text-sm">
@@ -45,10 +57,12 @@
 
     @unless(str_contains($salida, 'no hay nada que recuperar'))
     <form method="POST" action="{{ route('bitacora.recuperar-gastos.aplicar') }}"
-          onsubmit="return confirm('¿Aplicar la reparación mostrada en la vista previa? Conviene tener una copia de la base de datos antes.');">
+          onsubmit="return confirm('¿Aplicar la reparación mostrada en la vista previa{{ $caso ? ', solo para el caso elegido' : ', para todos los casos' }}? Conviene tener una copia de la base de datos antes.');">
         @csrf
+        <input type="hidden" name="caso" value="{{ $caso }}">
         <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-lg font-medium">
-            <i class="fas fa-screwdriver-wrench mr-1"></i> Aplicar reparación
+            <i class="fas fa-screwdriver-wrench mr-1"></i>
+            {{ $caso ? 'Aplicar reparación solo a este caso' : 'Aplicar reparación a todos los casos' }}
         </button>
     </form>
     @endunless
