@@ -342,6 +342,7 @@
             <form method="POST" action="{{ route('seguimientos.update', $seg) }}" class="p-6 space-y-4">
                 @csrf @method('PUT')
                 <input type="hidden" name="_modal" value="modal-seguimiento-editar-{{ $seg->id }}">
+                <input type="hidden" name="gastos_presentes" value="1">
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Vincular a *</label>
@@ -604,11 +605,14 @@
 
     let gastoContador = 0;
 
-    function crearFilaGasto(concepto, monto) {
+    // "id" solo viene en las filas de un gasto que ya existe (modal de edición), para que
+    // el servidor sepa qué gasto se modifica y cuál se quitó.
+    function crearFilaGasto(concepto, monto, id) {
         const idx = gastoContador++;
         const fila = document.createElement('div');
         fila.className = 'grid grid-cols-3 gap-2 items-start';
         fila.innerHTML = `
+            ${id ? `<input type="hidden" name="gastos[${idx}][id]" value="${Number(id)}">` : ''}
             <input type="text" name="gastos[${idx}][concepto]" placeholder="Concepto" value="${concepto ? String(concepto).replace(/"/g, '&quot;') : ''}"
                    class="col-span-2 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400">
             <div class="flex gap-1">
@@ -622,10 +626,10 @@
         return fila;
     }
 
-    function agregarGasto(containerId, concepto, monto) {
+    function agregarGasto(containerId, concepto, monto, id) {
         const contenedor = document.getElementById(containerId);
         if (!contenedor) return;
-        contenedor.appendChild(crearFilaGasto(concepto, monto));
+        contenedor.appendChild(crearFilaGasto(concepto, monto, id));
     }
 
     actualizarCamposGasto('nuevo');
@@ -633,7 +637,7 @@
     @foreach($seguimientosParaModales as $seg)
         actualizarCamposGasto('editar-{{ $seg->id }}');
         @foreach($seg->gastos as $g)
-            agregarGasto('gastos-filas-editar-{{ $seg->id }}', @json($g->concepto), @json($g->monto));
+            agregarGasto('gastos-filas-editar-{{ $seg->id }}', @json($g->concepto), @json($g->monto), {{ $g->id }});
         @endforeach
     @endforeach
 

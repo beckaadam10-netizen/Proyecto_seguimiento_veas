@@ -14,6 +14,8 @@ use Illuminate\Support\Str;
 // Este comando corrige los datos ya existentes: reparte cada cobro suelto entre los
 // gastos pendientes de su trámite/expediente, del más antiguo al más nuevo (FIFO), igual
 // que hace CobroController::distribuirCobro() para los cobros nuevos a partir de ahora.
+// También repara los cobros que quedaron sueltos cuando, al editar una actuación, se
+// borraban sus gastos y se volvían a crear (ver SeguimientoController::sincronizarGasto()).
 class ReasignarCobrosAGastos extends Command
 {
     protected $signature = 'app:reasignar-cobros-a-gastos {--dry-run : Solo mostrar qué se haría, sin escribir nada}';
@@ -52,9 +54,21 @@ class ReasignarCobrosAGastos extends Command
                 $restante = (float) $cobro->monto;
                 // Todas las partes en que se divide este cobro suelto comparten un mismo
                 // lote (así después se puede generar un solo PDF por cada cobro original).
-                $lote = (string) Str::uuid();
+                // Si el cobro ya tenía lote (quedó suelto porque se borró el gasto que cubría),
+                // se conserva: así sigue saliendo en el mismo comprobante que los demás
+                // cobros de ese mismo pago.
+                $lote = $cobro->lote ?: (string) Str::uuid();
 
-                foreach ($gastosOrdenados as $gasto) {
+                // Un cobro que quedó suelto porque se borró y se volvió a crear su gasto
+                // (al editar la actuación) cubre exactamente lo que falta de ese gasto
+                // recreado: si hay un gasto pendiente por ese mismo monto, va primero, para
+                // no repartirlo entre gastos más antiguos que de verdad siguen sin pagar.
+                $exacto = $gastosOrdenados->first(fn ($g) => abs(($pendientePorGasto[$g->id] ?? 0) - $restante) < 0.005);
+                $candidatos = $exacto
+                    ? collect([$exacto])->concat($gastosOrdenados->reject(fn ($g) => $g->id === $exacto->id))
+                    : $gastosOrdenados;
+
+                foreach ($candidatos as $gasto) {
                     if ($restante <= 0.004) {
                         break;
                     }

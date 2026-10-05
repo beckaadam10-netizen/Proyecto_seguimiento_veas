@@ -12,6 +12,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -275,6 +276,17 @@ class SeguimientoController extends Controller
 
         $gastos = $this->extraerDatosGasto($data);
 
+        // Solo el modal de edición del listado trae la sección de gastos (marcada con
+        // "gastos_presentes"). La página de edición suelta no la tiene: si se tomara su
+        // envío como "la actuación quedó sin gastos", se borrarían los gastos y sus cobros
+        // quedarían sueltos (cobrado > gastado, saldo negativo). Sin la sección, los gastos
+        // existentes se conservan tal cual.
+        if (! $request->boolean('gastos_presentes')) {
+            $gastos = Gasto::where('seguimiento_id', $seguimiento->id)->orderBy('id')->get()
+                ->map(fn (Gasto $g) => ['id' => $g->id, 'concepto' => $g->concepto, 'monto' => $g->monto])
+                ->all();
+        }
+
         // Si la fecha no cambia no se valida: la actuación puede ser de un período cuyo
         // PDF ya se generó, y corregir otro dato no tiene por qué obligar a moverla.
         if ($data['fecha_actuacion'] !== $seguimiento->fecha_actuacion->format('Y-m-d')) {
@@ -285,9 +297,12 @@ class SeguimientoController extends Controller
         $data['requiere_respuesta'] = $request->boolean('requiere_respuesta');
         $data['respondido']         = $request->boolean('respondido');
 
-        $seguimiento->update($data);
-
-        $this->sincronizarGasto($seguimiento, $gastos);
+        // En una transacción: si sincronizarGasto() rechaza un cambio (ej. quitar un
+        // gasto que ya tiene cobros), tampoco queda guardado el resto de la edición.
+        DB::transaction(function () use ($seguimiento, $data, $gastos) {
+            $seguimiento->update($data);
+            $this->sincronizarGasto($seguimiento, $gastos);
+        });
 
         return redirect()
             ->to($this->urlContexto($seguimiento))
@@ -383,42 +398,72 @@ class SeguimientoController extends Controller
     // ese gasto a su nombre (usuario_id), el gasto conserva su created_at (que es lo que
     // usa el reporte de pasantes para saber si ya fue rendido) y sus cobros no quedan
     // huérfanos.
+    //
+    // Cada fila del formulario trae el id del gasto que representa (las filas nuevas no
+    // traen id). Un gasto que ya tiene cobros no se puede quitar ni bajar por debajo de lo
+    // cobrado: eso dejaría cobrado > gastado y el caso aparecería como "Pagado" con saldo
+    // negativo, como si el estudio le debiera al cliente.
     private function sincronizarGasto(Seguimiento $seguimiento, array $gastos): void
     {
-        // Si el mismo concepto+monto aparece más de una vez (ej. doble clic en
-        // "+ Agregar gasto" cargó la misma línea dos veces sin que se note en el
-        // formulario), no se duplica el gasto real — se guarda una sola vez.
-        $gastosUnicos = collect($gastos)
-            ->filter(fn ($g) => ! empty($g['concepto']) && ! empty($g['monto']))
-            ->unique(fn ($g) => strtolower(trim($g['concepto'])) . '|' . (float) $g['monto'])
-            ->values();
+        $filas = collect($gastos)->filter(fn ($g) => ! empty($g['concepto']) && ! empty($g['monto']));
 
-        $existentes = Gasto::where('seguimiento_id', $seguimiento->id)->orderBy('id')->get();
+        $existentes = Gasto::with('cobros')->where('seguimiento_id', $seguimiento->id)->orderBy('id')->get()->keyBy('id');
+
+        $conId = $filas->filter(fn ($g) => ! empty($g['id']) && $existentes->has((int) $g['id']))
+            ->unique(fn ($g) => (int) $g['id']);
+
+        // Si el mismo concepto+monto aparece más de una vez entre las filas nuevas (ej.
+        // doble clic en "+ Agregar gasto" cargó la misma línea dos veces sin que se note
+        // en el formulario), no se duplica el gasto real — se guarda una sola vez.
+        $nuevas = $filas->reject(fn ($g) => ! empty($g['id']) && $existentes->has((int) $g['id']))
+            ->unique(fn ($g) => strtolower(trim($g['concepto'])) . '|' . (float) $g['monto']);
+
+        $quitados = $existentes->except($conId->map(fn ($g) => (int) $g['id'])->all());
+
+        if ($quitado = $quitados->first(fn (Gasto $g) => $g->cobros->isNotEmpty())) {
+            throw ValidationException::withMessages([
+                'gastos' => "No se puede quitar el gasto \"{$quitado->concepto}\": ya tiene un cobro registrado. Eliminá primero ese cobro.",
+            ]);
+        }
+
+        foreach ($conId as $g) {
+            $gasto = $existentes->get((int) $g['id']);
+
+            if ((float) $g['monto'] + 0.004 < $gasto->total_cobrado) {
+                throw ValidationException::withMessages([
+                    'gastos' => "El gasto \"{$gasto->concepto}\" ya tiene cobrados " . number_format($gasto->total_cobrado, 2)
+                        . ' Bs: su monto no puede ser menor a eso.',
+                ]);
+            }
+        }
+
+        $datosComunes = [
+            'tramite_id'    => $seguimiento->tramite_id,
+            'expediente_id' => $seguimiento->expediente_id,
+            'fecha'         => $seguimiento->fecha_actuacion,
+        ];
+
+        foreach ($conId as $g) {
+            $existentes->get((int) $g['id'])->update($datosComunes + [
+                'concepto' => $g['concepto'],
+                'monto'    => $g['monto'],
+            ]);
+        }
 
         // Un gasto nuevo agregado al editar le pertenece a quien registró la actuación,
         // no a quien la está editando.
         $duenio = $existentes->first()?->usuario_id ?? $seguimiento->usuario_id ?? auth()->id();
 
-        foreach ($gastosUnicos as $i => $g) {
-            $datos = [
-                'tramite_id'     => $seguimiento->tramite_id,
-                'expediente_id'  => $seguimiento->expediente_id,
+        foreach ($nuevas as $g) {
+            Gasto::create($datosComunes + [
+                'seguimiento_id' => $seguimiento->id,
+                'usuario_id'     => $duenio,
                 'concepto'       => $g['concepto'],
                 'monto'          => $g['monto'],
-                'fecha'          => $seguimiento->fecha_actuacion,
-            ];
-
-            if ($gasto = $existentes->get($i)) {
-                $gasto->update($datos);
-            } else {
-                Gasto::create($datos + [
-                    'seguimiento_id' => $seguimiento->id,
-                    'usuario_id'     => $duenio,
-                ]);
-            }
+            ]);
         }
 
-        $existentes->slice($gastosUnicos->count())->each->delete();
+        $quitados->each->delete();
     }
 
     private function urlContexto(Seguimiento $seguimiento): string
@@ -443,6 +488,7 @@ class SeguimientoController extends Controller
             'tipo_actuacion_id' => 'required|exists:tipos_actuacion,id',
             'titulo'            => 'nullable|string|max:200',
             'gastos'                 => 'nullable|array',
+            'gastos.*.id'            => 'nullable|integer',
             'gastos.*.concepto'      => 'nullable|string|max:255',
             'gastos.*.monto'         => 'nullable|numeric|min:0.01',
             'fecha_actuacion'   => 'required|date',
