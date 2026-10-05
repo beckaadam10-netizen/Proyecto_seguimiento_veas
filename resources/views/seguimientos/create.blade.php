@@ -90,8 +90,13 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de actuación *</label>
                     @if(auth()->user()->puede('seguimientos', 'modificar_fecha'))
+                    @php $minFechaActuacion = auth()->user()->siguienteDesdeReporte(); @endphp
                     <input type="date" name="fecha_actuacion" value="{{ old('fecha_actuacion', date('Y-m-d')) }}" required
+                           min="{{ $minFechaActuacion?->toDateString() }}"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
+                    @if($minFechaActuacion)
+                    <p class="text-xs text-amber-600 mt-1">Desde el {{ $minFechaActuacion->format('d/m/Y') }}: los días anteriores ya están en un PDF del Reporte de Pasantes.</p>
+                    @endif
                     @else
                     <input type="date" name="fecha_actuacion" value="{{ old('fecha_actuacion', date('Y-m-d')) }}" readonly required
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed">

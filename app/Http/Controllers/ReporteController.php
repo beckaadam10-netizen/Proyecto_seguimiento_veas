@@ -376,7 +376,23 @@ class ReporteController extends Controller
         // equipo" más abajo.
         $tienePropios = $this->tieneGastosPropios();
 
-        $gastos     = $tienePropios ? $this->queryGastosPasante($request, propio: true)->get() : collect();
+        // Con un PDF ya generado, el "Desde" queda fijo en el día siguiente al último
+        // "Hasta", tanto para filtrar como para generar el próximo.
+        // Se usa una copia del request para no pisar el filtro "desde" de la tabla del
+        // equipo, que comparte el mismo nombre de parámetro.
+        $siguienteDesde = $tienePropios ? $this->siguienteDesdePropio() : null;
+        $requestPropio  = $siguienteDesde
+            ? $request->duplicate(array_merge($request->query(), ['desde' => $siguienteDesde->toDateString()]))
+            : $request;
+
+        // Si no se eligió "Hasta", se propone la fecha del último gasto todavía sin rendir,
+        // así el listado (y el PDF) ya muestra todo lo pendiente sin tener que buscarla.
+        $hastaSugerido = $tienePropios && ! $request->filled('hasta') ? $this->ultimoGastoPendiente($requestPropio) : null;
+        if ($hastaSugerido) {
+            $requestPropio = $requestPropio->duplicate(array_merge($requestPropio->query(), ['hasta' => $hastaSugerido]));
+        }
+
+        $gastos     = $tienePropios ? $this->queryGastosPasante($requestPropio, propio: true)->get() : collect();
         $grupos     = $this->agruparGastosPorCaso($gastos);
         $tiposGasto = $tienePropios ? TipoGasto::orderBy('nombre')->get() : collect();
 
@@ -399,7 +415,7 @@ class ReporteController extends Controller
             ? collect()
             : User::whereIn('id', ReportePasanteGenerado::select('usuario_id')->distinct())->orderBy('name')->get();
 
-        return view('reportes.pasantes', compact('grupos', 'tiposGasto', 'periodosPendientes', 'periodosRevisados', 'usuariosPasantes', 'tienePropios') + $this->resumenGastosPasante($gastos));
+        return view('reportes.pasantes', compact('grupos', 'tiposGasto', 'periodosPendientes', 'periodosRevisados', 'usuariosPasantes', 'tienePropios', 'siguienteDesde', 'hastaSugerido') + $this->resumenGastosPasante($gastos));
     }
 
     // Solo un administrador (o cualquier rol que no sea Pasante) puede marcar un período
@@ -437,12 +453,23 @@ class ReporteController extends Controller
         $propio = $this->tieneGastosPropios();
 
         if ($propio) {
+            // Los períodos van uno detrás del otro, sin huecos ni solapamientos: el "Desde"
+            // no lo elige el usuario, es siempre el día siguiente al último PDF generado.
+            if ($siguienteDesde = $this->siguienteDesdePropio()) {
+                $request->merge(['desde' => $siguienteDesde->toDateString()]);
+            }
+
+            if (! $request->filled('hasta') && $hastaSugerido = $this->ultimoGastoPendiente($request)) {
+                $request->merge(['hasta' => $hastaSugerido]);
+            }
+
             $request->validate([
                 'desde' => 'required|date',
                 'hasta' => 'required|date|after_or_equal:desde',
             ], [
                 'desde.required' => 'Para generar el reporte final elegí un rango de fechas (Desde/Hasta).',
                 'hasta.required' => 'Para generar el reporte final elegí un rango de fechas (Desde/Hasta).',
+                'hasta.after_or_equal' => 'La fecha "Hasta" no puede ser anterior a ' . Carbon::parse($request->desde)->format('d/m/Y') . '.',
             ]);
         }
 
@@ -715,6 +742,21 @@ class ReporteController extends Controller
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('fecha', '>=', $request->desde))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('fecha', '<=', $request->hasta))
             ->orderByDesc('fecha');
+    }
+
+    // Fecha (Y-m-d) del último gasto propio todavía sin rendir, respetando "Desde" y el
+    // tipo de gasto elegidos pero no "Hasta". null si no queda ninguno pendiente.
+    private function ultimoGastoPendiente(Request $request): ?string
+    {
+        $sinHasta = $request->duplicate(array_diff_key($request->query(), ['hasta' => true]));
+        $fecha    = $this->queryGastosPasante($sinHasta, propio: true)->reorder()->max('fecha');
+
+        return $fecha ? Carbon::parse($fecha)->toDateString() : null;
+    }
+
+    private function siguienteDesdePropio(): ?Carbon
+    {
+        return auth()->user()->siguienteDesdeReporte();
     }
 
     private function esPasante(): bool

@@ -8,7 +8,7 @@
 @section('header-actions')
     @if($tienePropios)
     <div class="flex items-center gap-2">
-        <a href="{{ route('reportes.pasantes.pdf', request()->query()) }}"
+        <a href="{{ route('reportes.pasantes.pdf', array_filter(array_merge(request()->query(), ['hasta' => request('hasta', $hastaSugerido)]))) }}"
            onclick="setTimeout(() => location.reload(), 1000)"
            class="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"
            title="Elegí Desde y Hasta antes de generar: ese período queda bloqueado y no se puede volver a generar.">
@@ -64,11 +64,21 @@
     </div>
     <div>
         <label class="block text-xs text-gray-500 mb-1">Desde</label>
-        <input type="date" name="desde" value="{{ request('desde') }}" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        @if($siguienteDesde)
+        <input type="date" name="desde" value="{{ $siguienteDesde->toDateString() }}" readonly
+               title="Fijo: día siguiente al último PDF generado"
+               class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-600 cursor-not-allowed">
+        @else
+        <input type="date" name="desde" value="{{ request('desde') }}"
+               onchange="if (this.value && this.form.hasta.value) this.form.submit()"
+               class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        @endif
     </div>
     <div>
         <label class="block text-xs text-gray-500 mb-1">Hasta</label>
-        <input type="date" name="hasta" value="{{ request('hasta') }}" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        <input type="date" name="hasta" value="{{ request('hasta', $hastaSugerido) }}" min="{{ $siguienteDesde?->toDateString() }}"
+               onchange="if (this.value && this.checkValidity()) this.form.submit()"
+               class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
     </div>
     <button type="submit" class="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-700">
         <i class="fas fa-search"></i> Filtrar
@@ -76,6 +86,17 @@
     <a href="{{ route('reportes.pasantes') }}" class="text-gray-500 text-sm py-2 hover:text-gray-700">
         <i class="fas fa-times"></i> Limpiar
     </a>
+    @if($siguienteDesde)
+    <p class="w-full text-xs text-gray-500">
+        <i class="fas fa-circle-info mr-1"></i>
+        El próximo PDF empieza el {{ $siguienteDesde->format('d/m/Y') }}, el día siguiente al último que generaste.
+        @if($hastaSugerido)
+            "Hasta" se completó con tu último gasto ({{ \Carbon\Carbon::parse($hastaSugerido)->format('d/m/Y') }}); podés cambiarlo.
+        @else
+            No tenés gastos pendientes de rendir.
+        @endif
+    </p>
+    @endif
 </form>
 
 <div class="space-y-6">

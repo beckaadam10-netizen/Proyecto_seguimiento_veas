@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -87,6 +88,18 @@ class User extends Authenticatable implements MustVerifyEmail
     public function puede(string $modulo, string $accion = 'ver'): bool
     {
         return $this->tienePermiso("{$modulo}.{$accion}");
+    }
+
+    // Primer día que todavía puede entrar en un PDF nuevo del Reporte de Pasantes: el día
+    // siguiente al "Hasta" más reciente de los PDFs que generó este usuario, o null si
+    // todavía no generó ninguno. withTrashed(): un período eliminado igual ya se facturó.
+    public function siguienteDesdeReporte(): ?Carbon
+    {
+        $ultimoHasta = ReportePasanteGenerado::withTrashed()
+            ->where('usuario_id', $this->id)
+            ->max('hasta');
+
+        return $ultimoHasta ? Carbon::parse($ultimoHasta)->addDay()->startOfDay() : null;
     }
 
     // Cuenta de acceso de un cliente: usuario = su nombre completo, contraseña = su DNI.

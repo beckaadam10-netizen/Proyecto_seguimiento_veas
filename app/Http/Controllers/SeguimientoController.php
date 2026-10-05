@@ -9,9 +9,11 @@ use App\Models\TipoActuacion;
 use App\Models\TipoDocumento;
 use App\Models\Tramite;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class SeguimientoController extends Controller
@@ -107,6 +109,8 @@ class SeguimientoController extends Controller
         unset($data['notificar_cliente']);
 
         $gastos = $this->extraerDatosGasto($data);
+
+        $this->validarFechaContraReporte(auth()->user(), $data['fecha_actuacion'], $gastos);
 
         $data['descripcion'] = $this->generarDescripcion($request, $gastos);
         $data['usuario_id']          = auth()->id();
@@ -271,6 +275,12 @@ class SeguimientoController extends Controller
 
         $gastos = $this->extraerDatosGasto($data);
 
+        // Si la fecha no cambia no se valida: la actuación puede ser de un período cuyo
+        // PDF ya se generó, y corregir otro dato no tiene por qué obligar a moverla.
+        if ($data['fecha_actuacion'] !== $seguimiento->fecha_actuacion->format('Y-m-d')) {
+            $this->validarFechaContraReporte($this->duenioGastos($seguimiento), $data['fecha_actuacion'], $gastos);
+        }
+
         $data['descripcion'] = $this->generarDescripcion($request, $gastos);
         $data['requiere_respuesta'] = $request->boolean('requiere_respuesta');
         $data['respondido']         = $request->boolean('respondido');
@@ -321,6 +331,31 @@ class SeguimientoController extends Controller
         return back()->with('success', 'Marcado como respondido.');
     }
 
+    // Una actuación con gastos no puede tener fecha dentro de un período cuyo PDF del
+    // Reporte de Pasantes ya se generó: esos gastos nunca entrarían en el próximo PDF.
+    private function validarFechaContraReporte(?User $duenio, string $fecha, array $gastos): void
+    {
+        $tieneGastos = collect($gastos)->contains(fn ($g) => ! empty($g['concepto']) && ! empty($g['monto']));
+        $minima      = $duenio?->siguienteDesdeReporte();
+
+        if ($tieneGastos && $minima && Carbon::parse($fecha)->lt($minima)) {
+            throw ValidationException::withMessages([
+                'fecha_actuacion' => 'Los gastos hasta el ' . $minima->copy()->subDay()->format('d/m/Y')
+                    . ' ya se incluyeron en un PDF del Reporte de Pasantes. La fecha de actuación tiene que ser desde el '
+                    . $minima->format('d/m/Y') . '.',
+            ]);
+        }
+    }
+
+    // A quién le pertenecen los gastos de una actuación (ver sincronizarGasto()).
+    private function duenioGastos(Seguimiento $seguimiento): ?User
+    {
+        $usuarioId = Gasto::where('seguimiento_id', $seguimiento->id)->orderBy('id')->value('usuario_id')
+            ?? $seguimiento->usuario_id;
+
+        return $usuarioId ? User::find($usuarioId) : null;
+    }
+
     private function extraerDatosGasto(array &$data): array
     {
         $gastos = $data['gastos'] ?? [];
@@ -343,31 +378,47 @@ class SeguimientoController extends Controller
         return $request->input('observaciones') ?: 'Sin gastos registrados.';
     }
 
+    // Los gastos existentes se actualizan en el lugar en vez de borrarse y volver a crearse:
+    // así un administrador que corrige el monto de un gasto de un pasante no se queda con
+    // ese gasto a su nombre (usuario_id), el gasto conserva su created_at (que es lo que
+    // usa el reporte de pasantes para saber si ya fue rendido) y sus cobros no quedan
+    // huérfanos.
     private function sincronizarGasto(Seguimiento $seguimiento, array $gastos): void
     {
-        Gasto::where('seguimiento_id', $seguimiento->id)->delete();
-
         // Si el mismo concepto+monto aparece más de una vez (ej. doble clic en
         // "+ Agregar gasto" cargó la misma línea dos veces sin que se note en el
         // formulario), no se duplica el gasto real — se guarda una sola vez.
         $gastosUnicos = collect($gastos)
-            ->unique(fn ($g) => strtolower(trim($g['concepto'] ?? '')) . '|' . (float) ($g['monto'] ?? 0));
+            ->filter(fn ($g) => ! empty($g['concepto']) && ! empty($g['monto']))
+            ->unique(fn ($g) => strtolower(trim($g['concepto'])) . '|' . (float) $g['monto'])
+            ->values();
 
-        foreach ($gastosUnicos as $g) {
-            if (empty($g['concepto']) || empty($g['monto'])) {
-                continue;
-            }
+        $existentes = Gasto::where('seguimiento_id', $seguimiento->id)->orderBy('id')->get();
 
-            Gasto::create([
+        // Un gasto nuevo agregado al editar le pertenece a quien registró la actuación,
+        // no a quien la está editando.
+        $duenio = $existentes->first()?->usuario_id ?? $seguimiento->usuario_id ?? auth()->id();
+
+        foreach ($gastosUnicos as $i => $g) {
+            $datos = [
                 'tramite_id'     => $seguimiento->tramite_id,
                 'expediente_id'  => $seguimiento->expediente_id,
-                'seguimiento_id' => $seguimiento->id,
-                'usuario_id'     => auth()->id(),
                 'concepto'       => $g['concepto'],
                 'monto'          => $g['monto'],
                 'fecha'          => $seguimiento->fecha_actuacion,
-            ]);
+            ];
+
+            if ($gasto = $existentes->get($i)) {
+                $gasto->update($datos);
+            } else {
+                Gasto::create($datos + [
+                    'seguimiento_id' => $seguimiento->id,
+                    'usuario_id'     => $duenio,
+                ]);
+            }
         }
+
+        $existentes->slice($gastosUnicos->count())->each->delete();
     }
 
     private function urlContexto(Seguimiento $seguimiento): string
