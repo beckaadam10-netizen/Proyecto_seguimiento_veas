@@ -131,21 +131,107 @@
 
 </div>
 
-<div class="grid grid-cols-1 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-    {{-- Carga de abogados --}}
+    {{-- Top 5 clientes con más saldo pendiente por cobrar --}}
     <div class="bg-white rounded-xl shadow-sm">
         <div class="p-5 border-b flex items-center justify-between">
             <h3 class="font-semibold text-gray-700">
-                <i class="fas fa-user-tie text-indigo-600 mr-2"></i> Carga de Abogados
+                <i class="fas fa-file-invoice-dollar text-red-600 mr-2"></i> Clientes con más deuda por cobrar
             </h3>
-            <a href="{{ route('abogados.index') }}" class="text-xs text-brand-700 hover:underline">Ver todos</a>
+            @if(auth()->user()->puede('reportes'))
+            <a href="{{ route('reportes.clientes') }}" class="text-xs text-brand-700 hover:underline">Ver todos</a>
+            @endif
         </div>
-        <div class="p-5">
-            @include('partials._bar-chart-horizontal', [
-                'items' => $carga_abogados,
-                'emptyMessage' => 'No hay abogados con expedientes o trámites asignados.',
-            ])
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-5 py-2.5 text-left font-semibold text-gray-600 w-10">#</th>
+                        <th class="px-5 py-2.5 text-left font-semibold text-gray-600">Cliente</th>
+                        <th class="px-5 py-2.5 text-right font-semibold text-gray-600">Saldo pendiente</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($clientes_deuda as $i => $fila)
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-5 py-3 text-gray-400">{{ $i + 1 }}</td>
+                        <td class="px-5 py-3">
+                            @if(auth()->user()->puede('clientes'))
+                            <a href="{{ route('clientes.show', $fila->cliente) }}" class="text-gray-800 hover:text-brand-700 font-medium">
+                                {{ $fila->cliente->nombre_completo }}
+                            </a>
+                            @else
+                            <span class="text-gray-800 font-medium">{{ $fila->cliente->nombre_completo }}</span>
+                            @endif
+                        </td>
+                        <td class="px-5 py-3 text-right font-semibold text-red-600 whitespace-nowrap">{{ number_format($fila->saldo, 2) }} Bs</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="3" class="px-5 py-8 text-center text-gray-400">
+                            <i class="fas fa-circle-check text-2xl mb-2"></i>
+                            <p class="text-sm">Ningún cliente tiene saldo pendiente.</p>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Pasantes: cuánto llevan gastado desde su último reporte generado (pendiente de rendir) --}}
+    <div class="bg-white rounded-xl shadow-sm">
+        <div class="p-5 border-b flex items-center justify-between">
+            <div>
+                <h3 class="font-semibold text-gray-700">
+                    <i class="fas fa-user-graduate text-indigo-600 mr-2"></i> Gastos de pasantes en seguimientos
+                </h3>
+                <p class="text-xs text-gray-400 mt-0.5">Pendiente de rendir: vuelve a 0 cuando el pasante genera su reporte.</p>
+            </div>
+            @if(auth()->user()->puede('reportes', 'pasantes'))
+            <a href="{{ route('reportes.pasantes') }}" class="text-xs text-brand-700 hover:underline">Ver reporte</a>
+            @endif
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-5 py-2.5 text-left font-semibold text-gray-600">Pasante</th>
+                        <th class="px-5 py-2.5 text-center font-semibold text-gray-600">Gastos</th>
+                        <th class="px-5 py-2.5 text-right font-semibold text-gray-600">Por rendir</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($gastos_pasantes as $pasante)
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-5 py-3">
+                            <p class="text-gray-800 font-medium">{{ $pasante->name }}</p>
+                            <p class="text-xs text-gray-400">
+                                {{ $pasante->ultimo_reporte ? 'Último reporte hasta el ' . $pasante->ultimo_reporte->format('d/m/Y') : 'Sin reportes generados' }}
+                            </p>
+                        </td>
+                        <td class="px-5 py-3 text-center text-gray-600">{{ $pasante->gastos_pendientes }}</td>
+                        <td class="px-5 py-3 text-right font-semibold whitespace-nowrap {{ $pasante->total_gastado > 0 ? 'text-amber-700' : 'text-gray-400' }}">{{ number_format($pasante->total_gastado, 2) }} Bs</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="3" class="px-5 py-8 text-center text-gray-400">
+                            <i class="fas fa-user-graduate text-2xl mb-2"></i>
+                            <p class="text-sm">No hay pasantes registrados.</p>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+                @if($gastos_pasantes->isNotEmpty())
+                <tfoot class="bg-gray-50 border-t">
+                    <tr>
+                        <td class="px-5 py-2.5 font-medium text-gray-600" colspan="2">Total</td>
+                        <td class="px-5 py-2.5 text-right font-semibold text-amber-700 whitespace-nowrap">{{ number_format((float) $gastos_pasantes->sum('total_gastado'), 2) }} Bs</td>
+                    </tr>
+                </tfoot>
+                @endif
+            </table>
         </div>
     </div>
 

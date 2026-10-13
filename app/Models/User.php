@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
@@ -62,6 +63,12 @@ class User extends Authenticatable implements MustVerifyEmail
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    // Gastos que cargó este usuario.
+    public function gastos(): HasMany
+    {
+        return $this->hasMany(Gasto::class, 'usuario_id');
     }
 
     // true cuando este usuario es el acceso de un cliente (no un usuario interno del estudio).

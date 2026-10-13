@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Abogado;
 use App\Models\Audiencia;
 use App\Models\Bitacora;
 use App\Models\Cliente;
@@ -10,16 +9,12 @@ use App\Models\Cobro;
 use App\Models\Expediente;
 use App\Models\Gasto;
 use App\Models\Tramite;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    // Paleta categórica validada (orden fijo — ver skill de dataviz / palette.md)
-    private const PALETA_CATEGORICA = [
-        '#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948',
-    ];
-
     public function index(Request $request): View
     {
         if ($request->user()->esCliente()) {
@@ -34,7 +29,8 @@ class DashboardController extends Controller
         ];
 
         $resumen_financiero = $this->resumenFinanciero();
-        $carga_abogados      = $this->cargaAbogados();
+        $clientes_deuda      = $this->clientesConMasDeuda();
+        $gastos_pasantes     = $this->gastosPasantes();
 
         // La bitácora es un módulo de auditoría (solo Administrador por defecto): si el
         // usuario no tiene permiso para verla, no le mostramos su contenido acá tampoco.
@@ -45,7 +41,8 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'stats',
             'resumen_financiero',
-            'carga_abogados',
+            'clientes_deuda',
+            'gastos_pasantes',
             'actividad_reciente'
         ));
     }
@@ -98,23 +95,62 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Ranking de carga de trabajo: es una magnitud (cuánto), no una identidad,
-     * así que usa un solo hue (secuencial) en vez de colores categóricos.
-     */
-    private function cargaAbogados()
+    // Los 5 clientes con más saldo pendiente (gastos - cobros) sumando todos sus
+    // trámites y expedientes, igual que el saldo que se ve en cada caso.
+    private function clientesConMasDeuda()
     {
-        return Abogado::activos()
-            ->withCount(['expedientes', 'tramites'])
-            ->get()
-            ->map(fn ($a) => (object) [
-                'label' => $a->nombre,
-                'value' => $a->expedientes_count + $a->tramites_count,
-                'color' => self::PALETA_CATEGORICA[0],
+        $porCliente = function ($modelo) {
+            $tabla = (new $modelo)->getTable();
+
+            return $modelo::query()
+                ->leftJoin('tramites', 'tramites.id', '=', "{$tabla}.tramite_id")
+                ->leftJoin('expedientes', 'expedientes.id', '=', "{$tabla}.expediente_id")
+                ->selectRaw("COALESCE(tramites.cliente_id, expedientes.cliente_id) AS cliente_id, SUM({$tabla}.monto) AS total")
+                ->groupByRaw('COALESCE(tramites.cliente_id, expedientes.cliente_id)')
+                ->pluck('total', 'cliente_id');
+        };
+
+        $gastos = $porCliente(Gasto::class);
+        $cobros = $porCliente(Cobro::class);
+
+        $saldos = $gastos
+            ->map(fn ($total, $clienteId) => (float) $total - (float) ($cobros[$clienteId] ?? 0))
+            ->filter(fn ($saldo, $clienteId) => $clienteId && $saldo > 0.009)
+            ->sortDesc()
+            ->take(5);
+
+        $clientes = Cliente::whereIn('id', $saldos->keys())->get()->keyBy('id');
+
+        return $saldos
+            ->filter(fn ($saldo, $clienteId) => $clientes->has($clienteId))
+            ->map(fn ($saldo, $clienteId) => (object) [
+                'cliente' => $clientes[$clienteId],
+                'saldo'   => $saldo,
             ])
-            ->filter(fn ($item) => $item->value > 0)
-            ->sortByDesc('value')
-            ->take(6)
+            ->values();
+    }
+
+    // Cuánto lleva gastado cada pasante y todavía no rindió: mismo corte que el Reporte de
+    // Pasantes (solo gastos con fecha posterior al "Hasta" de su último PDF generado), así
+    // que al generar el reporte la cuenta del pasante vuelve a 0.
+    private function gastosPasantes()
+    {
+        return User::whereHas('rol', fn ($q) => $q->where('nombre', 'Pasante'))
+            ->where('activo', true)
+            ->get()
+            ->each(function (User $pasante) {
+                $desde = $pasante->siguienteDesdeReporte();
+
+                $pendientes = $pasante->gastos()
+                    ->when($desde, fn ($q) => $q->whereDate('fecha', '>=', $desde))
+                    ->selectRaw('COUNT(*) AS cantidad, COALESCE(SUM(monto), 0) AS total')
+                    ->first();
+
+                $pasante->gastos_pendientes = (int) $pendientes->cantidad;
+                $pasante->total_gastado     = (float) $pendientes->total;
+                $pasante->ultimo_reporte    = $desde?->copy()->subDay();
+            })
+            ->sortByDesc('total_gastado')
             ->values();
     }
 }
