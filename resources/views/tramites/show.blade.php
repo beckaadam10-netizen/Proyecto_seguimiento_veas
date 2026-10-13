@@ -118,15 +118,21 @@
 
     {{-- Columna 3: Documentos --}}
     <div class="space-y-4">
-        @php $documentos = $tramite->seguimientos->whereNotNull('archivo_adjunto'); @endphp
+        {{-- Adjuntos de los seguimientos + documentos sueltos cargados directo contra el trámite --}}
+        @php
+            $documentos = $tramite->seguimientos->whereNotNull('archivo_adjunto')
+                ->concat($tramite->documentos)
+                ->sortByDesc(fn ($d) => $d instanceof \App\Models\Documento ? $d->created_at : $d->fecha_actuacion)
+                ->values();
+        @endphp
         <div class="bg-white rounded-xl shadow-sm">
-            <div class="flex items-center justify-between p-5 border-b">
+            <div class="flex items-center justify-between p-5 border-b flex-wrap gap-2">
                 <h3 class="font-semibold text-gray-700">
                     <i class="fas fa-folder-open text-brand-600 mr-2"></i>
                     Documentos ({{ $documentos->count() }})
                 </h3>
-                @if($documentos->isNotEmpty() && auth()->user()->puede('documentos', 'descargar'))
                 <div class="flex items-center gap-3">
+                    @if($documentos->isNotEmpty() && auth()->user()->puede('documentos', 'descargar'))
                     <a href="{{ route('tramites.documentos.pdf', $tramite) }}"
                        class="text-xs text-brand-600 hover:underline font-medium flex items-center gap-1">
                         <i class="fas fa-file-pdf"></i> Descargar trámite en PDF
@@ -135,16 +141,30 @@
                        class="text-xs text-brand-600 hover:underline font-medium flex items-center gap-1">
                         <i class="fas fa-file-zipper"></i> Exportar ZIP
                     </a>
+                    @endif
+                    @if(auth()->user()->puede('documentos', 'crear'))
+                    <button type="button" onclick="abrirModal('modal-documento-nuevo')"
+                            class="text-xs text-green-600 hover:underline font-medium flex items-center gap-1">
+                        <i class="fas fa-plus"></i> Nuevo documento
+                    </button>
+                    @endif
                 </div>
-                @endif
             </div>
             <div class="divide-y divide-gray-100">
                 @forelse($documentos as $doc)
+                @php $esDocumentoSuelto = $doc instanceof \App\Models\Documento; @endphp
                 <div class="px-5 py-3 hover:bg-gray-50 flex items-center gap-3">
                     <div class="w-9 h-9 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
                         <i class="fas {{ $doc->icono_archivo }}"></i>
                     </div>
                     <div class="flex-1 min-w-0">
+                        @if($esDocumentoSuelto)
+                        <p class="font-medium text-sm text-gray-800 truncate">{{ $doc->titulo }}</p>
+                        <p class="text-xs text-gray-500">
+                            {{ $doc->created_at->format('d/m/Y') }}
+                            @if($doc->fojas) · Fs. {{ $doc->fojas }} @endif
+                        </p>
+                        @else
                         <a href="{{ route('seguimientos.show', $doc) }}" class="font-medium text-sm text-gray-800 hover:text-brand-700 truncate block">
                             {{ $doc->titulo }}
                         </a>
@@ -152,19 +172,29 @@
                             {{ $doc->fecha_actuacion->format('d/m/Y') }}
                             @if($doc->tipoDocumento) · {{ $doc->tipoDocumento->nombre }} @endif
                         </p>
+                        @endif
                     </div>
                     <div class="flex gap-3 text-xs flex-shrink-0">
                         @if(auth()->user()->puede('documentos', 'ver'))
-                        <a href="{{ route('documentos.ver', $doc) }}" target="_blank"
+                        <a href="{{ $esDocumentoSuelto ? route('documentos.archivo.ver', $doc) : route('documentos.ver', $doc) }}" target="_blank"
                            class="text-gray-400 hover:text-brand-700" title="Ver">
                             <i class="fas fa-eye"></i>
                         </a>
                         @endif
                         @if(auth()->user()->puede('documentos', 'descargar'))
-                        <a href="{{ route('documentos.descargar', $doc) }}"
+                        <a href="{{ $esDocumentoSuelto ? route('documentos.archivo.descargar', $doc) : route('documentos.descargar', $doc) }}"
                            class="text-gray-400 hover:text-brand-700" title="Descargar">
                             <i class="fas fa-download"></i>
                         </a>
+                        @endif
+                        @if($esDocumentoSuelto && auth()->user()->puede('documentos', 'eliminar'))
+                        <form method="POST" action="{{ route('documentos.archivo.eliminar', $doc) }}"
+                              onsubmit="return confirm('¿Eliminar este documento?')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="text-gray-400 hover:text-red-600" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
                         @endif
                     </div>
                 </div>
@@ -254,7 +284,7 @@
                     <input type="file" name="archivo_adjunto" required
                            accept=".pdf,.doc,.docx,.jpg,.png"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
-                    <p class="text-xs text-gray-400 mt-1">PDF, Word o imagen. Máx. 10MB.</p>
+                    <p class="text-xs text-gray-400 mt-1">PDF, Word o imagen. Máx. 50MB.</p>
                 </div>
 
                 <div>
@@ -283,6 +313,64 @@
                         <i class="fas fa-save mr-1"></i> Registrar Seguimiento
                     </button>
                     <button type="button" onclick="cerrarModal('modal-seguimiento-nuevo')"
+                            class="text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal flotante: Nuevo documento (independiente de los seguimientos) --}}
+<div id="modal-documento-nuevo" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="fixed inset-0 bg-black/50" onclick="cerrarModal('modal-documento-nuevo')"></div>
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative bg-white rounded-xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white rounded-t-xl">
+                <h3 class="font-semibold text-gray-800 text-lg">Nuevo documento</h3>
+                <button type="button" onclick="cerrarModal('modal-documento-nuevo')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            <form method="POST" action="{{ route('documentos.store') }}" enctype="multipart/form-data" class="p-6 space-y-4">
+                @csrf
+                <input type="hidden" name="_modal" value="modal-documento-nuevo">
+                <input type="hidden" name="tramite_id" value="{{ $tramite->id }}">
+
+                <p class="text-sm text-gray-500 -mt-2">
+                    Trámite: <span class="font-medium text-gray-700">{{ $tramite->codigo }} — {{ $tramite->nombre }} | {{ $tramite->cliente->nombre_completo }}</span>
+                </p>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Título del documento *</label>
+                    <input type="text" name="titulo" value="{{ old('titulo') }}" required
+                           placeholder="Ej: Folio real"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
+                    @error('titulo')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fojas</label>
+                    <input type="text" name="fojas" value="{{ old('fojas') }}"
+                           placeholder="Ej: 1-15"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Archivo *</label>
+                    <input type="file" name="archivo" required
+                           accept=".pdf,.doc,.docx,.jpg,.png"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
+                    <p class="text-xs text-gray-400 mt-1">PDF, Word o imagen. Máx. 50MB.</p>
+                    @error('archivo')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-lg font-medium">
+                        <i class="fas fa-save mr-1"></i> Cargar documento
+                    </button>
+                    <button type="button" onclick="cerrarModal('modal-documento-nuevo')"
                             class="text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border hover:bg-gray-50">
                         Cancelar
                     </button>

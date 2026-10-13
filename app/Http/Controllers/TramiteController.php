@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Abogado;
 use App\Models\Cliente;
+use App\Models\Documento;
 use App\Models\InstitucionPublica;
 use App\Models\Tramite;
 use App\Models\TipoActuacion;
@@ -84,6 +85,7 @@ class TramiteController extends Controller
             'seguimientos.tipoActuacion',
             'seguimientos.usuario.rol',
             'seguimientos.tipoDocumento',
+            'documentos',
             'gastos.usuario',
             'gastos.tipoGasto',
             'gastos.cobros',
@@ -175,7 +177,7 @@ class TramiteController extends Controller
     {
         $this->autorizarPropioCliente($request, $tramite);
 
-        $documentos = $tramite->seguimientos()->whereNotNull('archivo_adjunto')->get();
+        $documentos = $this->documentosDelTramite($tramite);
 
         abort_if($documentos->isEmpty(), 404);
 
@@ -206,7 +208,8 @@ class TramiteController extends Controller
             }
 
             $extension    = pathinfo($rutaArchivo, PATHINFO_EXTENSION);
-            $nombreEnZip  = $doc->fecha_actuacion->format('Y-m-d') . '_' . Str::slug($doc->titulo) . '.' . $extension;
+            $fecha        = $doc instanceof Documento ? $doc->created_at : $doc->fecha_actuacion;
+            $nombreEnZip  = $fecha->format('Y-m-d') . '_' . Str::slug($doc->titulo) . '-' . $doc->id . '.' . $extension;
             $zip->addFile($rutaArchivo, $nombreEnZip);
         }
 
@@ -219,7 +222,7 @@ class TramiteController extends Controller
     {
         $this->autorizarPropioCliente($request, $tramite);
 
-        $documentos = $tramite->seguimientos()->whereNotNull('archivo_adjunto')->get();
+        $documentos = $this->documentosDelTramite($tramite);
 
         abort_if($documentos->isEmpty(), 404);
 
@@ -231,6 +234,14 @@ class TramiteController extends Controller
         }
 
         return response()->download($resultado['path'], $nombreBase . '.pdf')->deleteFileAfterSend(true);
+    }
+
+    // Adjuntos de los seguimientos + documentos sueltos cargados directo contra el trámite.
+    private function documentosDelTramite(Tramite $tramite): \Illuminate\Support\Collection
+    {
+        return $tramite->seguimientos()->whereNotNull('archivo_adjunto')->get()
+            ->concat($tramite->documentos()->get())
+            ->values();
     }
 
     private function cargarDatosReporte(Tramite $tramite): Tramite

@@ -124,7 +124,7 @@
                     <input type="file" name="archivo_adjunto"
                            accept=".pdf,.doc,.docx,.jpg,.png"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
-                    <p class="text-xs text-gray-400 mt-1">PDF, Word o imagen. Máx. 10MB.</p>
+                    <p class="text-xs text-gray-400 mt-1">PDF, Word o imagen. Máx. 50MB.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de documento</label>

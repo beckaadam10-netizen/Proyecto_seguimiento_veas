@@ -778,6 +778,84 @@
         boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Espere por favor...';
     });
 
+    // Formularios con archivos adjuntos: se envían por XHR para mostrar una barra de
+    // carga con el porcentaje subido. El servidor (middleware RedireccionSubidaConProgreso)
+    // contesta la redirección como JSON y acá se navega a ese destino, así los mensajes
+    // flash y los errores de validación se siguen viendo igual que en un envío normal.
+    // Corre después del bloqueo de doble envío, así que el botón ya quedó deshabilitado.
+    const MAX_MB_ARCHIVO = 50;
+
+    function restaurarBotonEnvio(boton) {
+        if (!boton || !boton.dataset.textoOriginalEnvio) return;
+        boton.disabled = false;
+        boton.innerHTML = boton.dataset.textoOriginalEnvio;
+        delete boton.dataset.textoOriginalEnvio;
+    }
+
+    document.addEventListener('submit', (e) => {
+        if (e.defaultPrevented) return;
+
+        const form = e.target;
+        if (form.enctype !== 'multipart/form-data' || form.method.toLowerCase() !== 'post') return;
+
+        const archivos = [...form.querySelectorAll('input[type="file"]')].flatMap((input) => [...input.files]);
+        if (!archivos.length) return;
+
+        e.preventDefault();
+        const boton = e.submitter;
+
+        const muyGrande = archivos.find((f) => f.size > MAX_MB_ARCHIVO * 1024 * 1024);
+        if (muyGrande) {
+            restaurarBotonEnvio(boton);
+            alert(`El archivo "${muyGrande.name}" pesa ${(muyGrande.size / 1024 / 1024).toFixed(1)} MB. El máximo permitido es ${MAX_MB_ARCHIVO} MB.`);
+            return;
+        }
+
+        const overlay = document.getElementById('subida-progreso');
+        const barra = document.getElementById('subida-progreso-barra');
+        const texto = document.getElementById('subida-progreso-texto');
+        barra.style.width = '0%';
+        texto.textContent = 'Subiendo archivo... 0%';
+        overlay.classList.remove('hidden');
+
+        const fallar = (mensaje) => {
+            overlay.classList.add('hidden');
+            restaurarBotonEnvio(boton);
+            alert(mensaje);
+        };
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', form.action);
+        xhr.setRequestHeader('X-Subida-Progreso', '1');
+        xhr.setRequestHeader('Accept', 'application/json, text/html');
+
+        xhr.upload.addEventListener('progress', (ev) => {
+            if (!ev.lengthComputable) return;
+            const pct = Math.round((ev.loaded / ev.total) * 100);
+            barra.style.width = pct + '%';
+            texto.textContent = pct < 100 ? `Subiendo archivo... ${pct}%` : 'Procesando, espere por favor...';
+        });
+
+        xhr.addEventListener('load', () => {
+            let destino = null;
+            try { destino = JSON.parse(xhr.responseText).redirect; } catch (_) {}
+
+            if (destino) {
+                window.location.href = destino;
+            } else if (xhr.status === 413) {
+                fallar(`El archivo supera el tamaño máximo permitido (${MAX_MB_ARCHIVO} MB).`);
+            } else if (xhr.status === 419) {
+                fallar('La sesión expiró. Recargá la página e intentá de nuevo.');
+            } else {
+                fallar('No se pudo guardar el archivo. Intentá de nuevo.');
+            }
+        });
+
+        xhr.addEventListener('error', () => fallar('Se perdió la conexión mientras se subía el archivo. Intentá de nuevo.'));
+
+        xhr.send(new FormData(form));
+    });
+
     // Si el navegador restaura la página desde el caché (ej. al volver con "atrás"),
     // los botones que quedaron deshabilitados por el bloqueo de arriba no se resetean
     // solos — hay que devolverles su estado normal.
@@ -790,6 +868,21 @@
         });
     });
 </script>
+
+{{-- Barra de carga para formularios con archivos (ver script de subida con progreso) --}}
+<div id="subida-progreso" class="hidden fixed inset-0 z-[100] bg-black/50">
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-6">
+            <p class="font-semibold text-gray-800 mb-3">
+                <i class="fas fa-cloud-arrow-up text-brand-600 mr-2"></i> Guardando
+            </p>
+            <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div id="subida-progreso-barra" class="h-full bg-brand-600 rounded-full transition-all duration-200" style="width: 0%"></div>
+            </div>
+            <p id="subida-progreso-texto" class="text-sm text-gray-500 mt-2">Subiendo archivo... 0%</p>
+        </div>
+    </div>
+</div>
 
 @stack('scripts')
 </body>

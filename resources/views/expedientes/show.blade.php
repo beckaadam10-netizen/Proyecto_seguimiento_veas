@@ -394,7 +394,7 @@
                     <input type="file" name="archivo" required
                            accept=".pdf,.doc,.docx,.jpg,.png"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
-                    <p class="text-xs text-gray-400 mt-1">PDF, Word o imagen. Máx. 10MB.</p>
+                    <p class="text-xs text-gray-400 mt-1">PDF, Word o imagen. Máx. 50MB.</p>
                 </div>
 
                 <div class="flex gap-3 pt-2">
@@ -498,7 +498,7 @@
                     <input type="file" name="archivo_adjunto" required
                            accept=".pdf,.doc,.docx,.jpg,.png"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
-                    <p class="text-xs text-gray-400 mt-1">PDF, Word o imagen. Máx. 10MB.</p>
+                    <p class="text-xs text-gray-400 mt-1">PDF, Word o imagen. Máx. 50MB.</p>
                 </div>
 
                 <div>

@@ -40,17 +40,23 @@ class DocumentoController extends Controller
         return $ruta;
     }
 
-    // Documento suelto, cargado directamente contra un expediente (sin pasar por un seguimiento).
+    // Documento suelto, cargado directamente contra un expediente o un trámite (sin pasar por un seguimiento).
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'expediente_id' => 'required|exists:expedientes,id',
+            'expediente_id' => 'required_without:tramite_id|prohibits:tramite_id|nullable|exists:expedientes,id',
+            'tramite_id'    => 'required_without:expediente_id|nullable|exists:tramites,id',
             'titulo'        => 'required|string|max:255',
             'fojas'         => 'nullable|string|max:50',
-            'archivo'       => 'required|file|max:1048576|mimes:pdf,doc,docx,jpg,png',
+            'archivo'       => 'required|file|max:51200|mimes:pdf,doc,docx,jpg,png',
         ]);
 
-        $this->autorizarPropioCliente($request, Expediente::findOrFail($data['expediente_id']));
+        $this->autorizarPropioCliente(
+            $request,
+            ! empty($data['expediente_id'])
+                ? Expediente::findOrFail($data['expediente_id'])
+                : Tramite::findOrFail($data['tramite_id'])
+        );
 
         $data['archivo']    = $request->file('archivo')->store('documentos', 'public');
         $data['usuario_id'] = auth()->id();
@@ -62,14 +68,14 @@ class DocumentoController extends Controller
 
     public function verDocumento(Request $request, Documento $documento): BinaryFileResponse
     {
-        $this->autorizarPropioCliente($request, $documento->expediente);
+        $this->autorizarPropioCliente($request, $documento->registro ?? abort(403));
 
         return response()->file($this->rutaArchivoDocumento($documento));
     }
 
     public function descargarDocumento(Request $request, Documento $documento): BinaryFileResponse
     {
-        $this->autorizarPropioCliente($request, $documento->expediente);
+        $this->autorizarPropioCliente($request, $documento->registro ?? abort(403));
 
         return response()->download($this->rutaArchivoDocumento($documento), basename($documento->archivo));
     }
@@ -85,7 +91,7 @@ class DocumentoController extends Controller
 
     public function eliminarDocumento(Request $request, Documento $documento): RedirectResponse
     {
-        $this->autorizarPropioCliente($request, $documento->expediente);
+        $this->autorizarPropioCliente($request, $documento->registro ?? abort(403));
 
         $ruta = storage_path('app/public/' . $documento->archivo);
         if (is_file($ruta)) {
@@ -142,9 +148,13 @@ class DocumentoController extends Controller
 
     private function queryTramites(Request $request)
     {
-        return Tramite::with(['cliente', 'seguimientos' => function ($q) {
-                $q->whereNotNull('archivo_adjunto')->with(['tipoDocumento', 'usuario'])->orderByDesc('created_at');
-            }])
+        return Tramite::with([
+                'cliente',
+                'seguimientos' => function ($q) {
+                    $q->whereNotNull('archivo_adjunto')->with(['tipoDocumento', 'usuario'])->orderByDesc('created_at');
+                },
+                'documentos.usuario',
+            ])
             ->when($request->filled('buscar'), fn ($q) => $q->where(function ($qq) use ($request) {
                 $qq->where('codigo', 'like', '%' . $request->buscar . '%')
                    ->orWhere('nombre', 'like', '%' . $request->buscar . '%');
@@ -172,11 +182,13 @@ class DocumentoController extends Controller
 
     private function normalizarTramite(Tramite $t): Tramite
     {
+        $documentosSueltos = $t->documentos;
+
         $t->tipo_registro  = 'tramite';
         $t->codigo_display = $t->codigo;
         $t->titulo_display = $t->nombre;
         $t->ruta_show      = route('tramites.show', $t);
-        $t->documentos     = $t->seguimientos;
+        $t->documentos     = $t->seguimientos->concat($documentosSueltos)->sortByDesc('created_at')->values();
 
         return $t;
     }

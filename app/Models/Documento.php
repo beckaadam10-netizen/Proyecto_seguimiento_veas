@@ -12,6 +12,7 @@ class Documento extends Model
 
     protected $fillable = [
         'expediente_id',
+        'tramite_id',
         'usuario_id',
         'titulo',
         'fojas',
@@ -21,6 +22,17 @@ class Documento extends Model
     public function expediente(): BelongsTo
     {
         return $this->belongsTo(Expediente::class);
+    }
+
+    public function tramite(): BelongsTo
+    {
+        return $this->belongsTo(Tramite::class);
+    }
+
+    // Expediente o trámite al que pertenece el documento.
+    public function getRegistroAttribute(): Expediente|Tramite|null
+    {
+        return $this->expediente ?? $this->tramite;
     }
 
     public function usuario(): BelongsTo

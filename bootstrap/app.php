@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \App\Http\Middleware\EnsurePermission::class,
             'cliente.verificado' => \App\Http\Middleware\EnsureClienteVerificado::class,
         ]);
+
+        $middleware->web(append: [
+            \App\Http\Middleware\RedireccionSubidaConProgreso::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

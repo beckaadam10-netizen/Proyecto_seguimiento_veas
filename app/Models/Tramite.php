@@ -60,6 +60,11 @@ class Tramite extends Model
         return $this->hasMany(Seguimiento::class)->orderByDesc('fecha_actuacion');
     }
 
+    public function documentos(): HasMany
+    {
+        return $this->hasMany(Documento::class)->orderByDesc('created_at');
+    }
+
     public function gastos(): HasMany
     {
         return $this->hasMany(Gasto::class)->orderByDesc('fecha');
