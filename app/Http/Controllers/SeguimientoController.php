@@ -9,6 +9,7 @@ use App\Models\TipoActuacion;
 use App\Models\TipoDocumento;
 use App\Models\Tramite;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -109,6 +110,8 @@ class SeguimientoController extends Controller
         unset($data['notificar_cliente']);
 
         $gastos = $this->extraerDatosGasto($data);
+
+        $this->validarFechaContraReporte(auth()->user(), $data['fecha_actuacion'], $gastos);
 
         $data['descripcion'] = $this->generarDescripcion($request, $gastos);
         $data['usuario_id']          = auth()->id();
@@ -284,6 +287,12 @@ class SeguimientoController extends Controller
                 ->all();
         }
 
+        // Si la fecha no cambia no se valida: la actuación puede ser de un período cuyo
+        // PDF ya se generó, y corregir otro dato no tiene por qué obligar a moverla.
+        if ($data['fecha_actuacion'] !== $seguimiento->fecha_actuacion->format('Y-m-d')) {
+            $this->validarFechaContraReporte($this->duenioGastos($seguimiento), $data['fecha_actuacion'], $gastos);
+        }
+
         $data['descripcion'] = $this->generarDescripcion($request, $gastos);
         $data['requiere_respuesta'] = $request->boolean('requiere_respuesta');
         $data['respondido']         = $request->boolean('respondido');
@@ -335,6 +344,39 @@ class SeguimientoController extends Controller
         ]);
 
         return back()->with('success', 'Marcado como respondido.');
+    }
+
+    // Una actuación con gastos no puede tener fecha dentro de un período cuyo PDF del
+    // Reporte de Pasantes ya se generó: esos gastos nunca entrarían en el próximo PDF.
+    // Tampoco puede ser una fecha futura: el PDF siempre cubre hasta hoy, así que un día
+    // que todavía no pasó no tiene actuación que registrar.
+    private function validarFechaContraReporte(?User $duenio, string $fecha, array $gastos): void
+    {
+        if (Carbon::parse($fecha)->gt(today())) {
+            throw ValidationException::withMessages([
+                'fecha_actuacion' => 'La fecha de actuación no puede ser posterior a hoy (' . today()->format('d/m/Y') . ').',
+            ]);
+        }
+
+        $tieneGastos = collect($gastos)->contains(fn ($g) => ! empty($g['concepto']) && ! empty($g['monto']));
+        $minima      = $duenio?->siguienteDesdeReporte();
+
+        if ($tieneGastos && $minima && Carbon::parse($fecha)->lt($minima)) {
+            throw ValidationException::withMessages([
+                'fecha_actuacion' => 'Los gastos hasta el ' . $minima->copy()->subDay()->format('d/m/Y')
+                    . ' ya se incluyeron en un PDF del Reporte de Pasantes. La fecha de actuación tiene que ser desde el '
+                    . $minima->format('d/m/Y') . '.',
+            ]);
+        }
+    }
+
+    // A quién le pertenecen los gastos de una actuación (ver sincronizarGasto()).
+    private function duenioGastos(Seguimiento $seguimiento): ?User
+    {
+        $usuarioId = Gasto::where('seguimiento_id', $seguimiento->id)->orderBy('id')->value('usuario_id')
+            ?? $seguimiento->usuario_id;
+
+        return $usuarioId ? User::find($usuarioId) : null;
     }
 
     private function extraerDatosGasto(array &$data): array

@@ -322,6 +322,10 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
              ->withoutMiddleware('permission:reportes.ver')
              ->middleware('permission:reportes.pasantes')
              ->name('pasantes.editar-conceptos');
+        Route::patch('/pasantes/{reportePasanteGenerado}/periodo', [ReporteController::class, 'pasantesCorregirPeriodo'])
+             ->withoutMiddleware('permission:reportes.ver')
+             ->middleware('permission:reportes.pasantes')
+             ->name('pasantes.corregir-periodo');
         Route::patch('/pasantes/{reportePasanteGenerado}/revisado', [ReporteController::class, 'pasantesMarcarRevisado'])
              ->withoutMiddleware('permission:reportes.ver')
              ->middleware('permission:reportes.pasantes')

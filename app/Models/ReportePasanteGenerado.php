@@ -19,18 +19,28 @@ class ReportePasanteGenerado extends Model
         'total',
         'revisado',
         'revisado_at',
+        'hasta_original',
+        'corregido_por',
+        'corregido_at',
     ];
 
     protected $casts = [
-        'desde'       => 'date',
-        'hasta'       => 'date',
-        'total'       => 'decimal:2',
-        'revisado'    => 'boolean',
-        'revisado_at' => 'datetime',
+        'desde'          => 'date',
+        'hasta'          => 'date',
+        'hasta_original' => 'date',
+        'total'          => 'decimal:2',
+        'revisado'       => 'boolean',
+        'revisado_at'    => 'datetime',
+        'corregido_at'   => 'datetime',
     ];
 
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    public function corregidoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'corregido_por');
     }
 }

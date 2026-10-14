@@ -100,13 +100,19 @@ class User extends Authenticatable implements MustVerifyEmail
     // Primer día que todavía puede entrar en un PDF nuevo del Reporte de Pasantes: el día
     // siguiente al "Hasta" más reciente de los PDFs que generó este usuario, o null si
     // todavía no generó ninguno. withTrashed(): un período eliminado igual ya se facturó.
+    // Un PDF viejo pudo quedar con "Hasta" en el futuro (antes se podía elegir); para ese
+    // se toma el día en que se generó, así no bloquea días que todavía no habían pasado.
+    // Los gastos con fecha futura que ese PDF ya incluyó siguen excluidos igual, porque
+    // queryGastosPasante() corta por cuándo se creó cada gasto.
     public function siguienteDesdeReporte(): ?Carbon
     {
         $ultimoHasta = ReportePasanteGenerado::withTrashed()
             ->where('usuario_id', $this->id)
-            ->max('hasta');
+            ->get(['hasta', 'created_at'])
+            ->map(fn (ReportePasanteGenerado $r) => $r->hasta->copy()->min($r->created_at->copy()->startOfDay()))
+            ->max();
 
-        return $ultimoHasta ? Carbon::parse($ultimoHasta)->addDay()->startOfDay() : null;
+        return $ultimoHasta ? $ultimoHasta->copy()->addDay()->startOfDay() : null;
     }
 
     // Cuenta de acceso de un cliente: usuario = su nombre completo, contraseña = su DNI.

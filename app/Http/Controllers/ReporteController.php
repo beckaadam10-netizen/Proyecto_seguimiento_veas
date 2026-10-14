@@ -10,6 +10,7 @@ use App\Models\Expediente;
 use App\Models\Gasto;
 use App\Models\InstitucionPublica;
 use App\Models\ReportePasanteGenerado;
+use App\Models\Seguimiento;
 use App\Models\TipoGasto;
 use App\Models\TipoTramite;
 use App\Models\Tramite;
@@ -21,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -385,11 +387,12 @@ class ReporteController extends Controller
             ? $request->duplicate(array_merge($request->query(), ['desde' => $siguienteDesde->toDateString()]))
             : $request;
 
-        // Si no se eligió "Hasta", se propone la fecha del último gasto todavía sin rendir,
-        // así el listado (y el PDF) ya muestra todo lo pendiente sin tener que buscarla.
-        $hastaSugerido = $tienePropios && ! $request->filled('hasta') ? $this->ultimoGastoPendiente($requestPropio) : null;
-        if ($hastaSugerido) {
-            $requestPropio = $requestPropio->duplicate(array_merge($requestPropio->query(), ['hasta' => $hastaSugerido]));
+        // El "Hasta" también queda fijo: siempre hoy. Un "Hasta" futuro dejaría bloqueados
+        // días que todavía no pasaron, y un gasto que se cargue en esos días quedaría antes
+        // del próximo "Desde" y nunca entraría en ningún PDF.
+        $hastaFijo = $tienePropios ? today() : null;
+        if ($hastaFijo) {
+            $requestPropio = $requestPropio->duplicate(array_merge($requestPropio->query(), ['hasta' => $hastaFijo->toDateString()]));
         }
 
         $gastos     = $tienePropios ? $this->queryGastosPasante($requestPropio, propio: true)->get() : collect();
@@ -399,14 +402,23 @@ class ReporteController extends Controller
         // Un pasante ve el historial de sus propios PDFs generados. Cualquier otro rol
         // (ej. Administrador) ve el de todo el equipo, para poder revisarlos y generar la
         // versión para el cliente sin que cada pasante tenga que mandársela por su cuenta.
-        $periodosGenerados = ReportePasanteGenerado::with('usuario')
+        // Último PDF de cada pasante (por id = orden de creación): es el único cuyo período
+        // administración puede corregir (ver pasantesCorregirPeriodo()).
+        $ultimoPorUsuario = $this->esPasante()
+            ? collect()
+            : ReportePasanteGenerado::withTrashed()->selectRaw('usuario_id, MAX(id) AS ultimo_id')->groupBy('usuario_id')->pluck('ultimo_id', 'usuario_id');
+
+        $periodosGenerados = ReportePasanteGenerado::with('usuario', 'corregidoPor')
             ->when($this->esPasante(), fn ($q) => $q->where('usuario_id', auth()->id()))
             ->when(! $this->esPasante() && $request->filled('usuario_id'), fn ($q) => $q->where('usuario_id', $request->usuario_id))
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('created_at', '>=', $request->desde))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('created_at', '<=', $request->hasta))
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn (ReportePasanteGenerado $p) => $this->conCasosDelPeriodo($p));
+            ->map(function (ReportePasanteGenerado $p) use ($ultimoPorUsuario) {
+                $p->corregible = (int) $ultimoPorUsuario->get($p->usuario_id) === $p->id && $this->hastaEnElFuturo($p);
+                return $this->conCasosDelPeriodo($p);
+            });
 
         $periodosPendientes = $periodosGenerados->where('revisado', false)->values();
         $periodosRevisados  = $periodosGenerados->where('revisado', true)->values();
@@ -415,7 +427,7 @@ class ReporteController extends Controller
             ? collect()
             : User::whereIn('id', ReportePasanteGenerado::select('usuario_id')->distinct())->orderBy('name')->get();
 
-        return view('reportes.pasantes', compact('grupos', 'tiposGasto', 'periodosPendientes', 'periodosRevisados', 'usuariosPasantes', 'tienePropios', 'siguienteDesde', 'hastaSugerido') + $this->resumenGastosPasante($gastos));
+        return view('reportes.pasantes', compact('grupos', 'tiposGasto', 'periodosPendientes', 'periodosRevisados', 'usuariosPasantes', 'tienePropios', 'siguienteDesde', 'hastaFijo') + $this->resumenGastosPasante($gastos));
     }
 
     // Solo un administrador (o cualquier rol que no sea Pasante) puede marcar un período
@@ -427,6 +439,112 @@ class ReporteController extends Controller
         $reportePasanteGenerado->update(['revisado' => true, 'revisado_at' => now()]);
 
         return back()->with('success', 'PDF marcado como revisado.');
+    }
+
+    // Antes el "Hasta" del PDF se podía elegir (o se proponía con la fecha del último
+    // gasto), así que hay PDFs que cubren días que todavía no habían pasado al generarse.
+    // Administración puede acortar ese "Hasta" a una fecha entre el "Desde" y el día en que
+    // se generó. Solo el último PDF de cada pasante: en uno del medio dejaría un hueco con
+    // el siguiente. Los gastos del PDF no cambian (ni el total): si alguno tiene fecha
+    // posterior al nuevo "Hasta" (casi siempre un error de tipeo, que es de donde salió ese
+    // "Hasta"), hay que corregirle la fecha en el mismo paso, o desaparecería del PDF y
+    // volvería a figurar como pendiente de rendir — se cobraría dos veces.
+    public function pasantesCorregirPeriodo(Request $request, ReportePasanteGenerado $reportePasanteGenerado): RedirectResponse
+    {
+        abort_if($this->esPasante(), 403);
+
+        $periodo = $reportePasanteGenerado;
+        $generado = $periodo->created_at->copy()->startOfDay();
+
+        $ultimoId = ReportePasanteGenerado::withTrashed()->where('usuario_id', $periodo->usuario_id)->max('id');
+        if ($ultimoId !== $periodo->id) {
+            return back()->with('error', 'Solo se puede corregir el último PDF que generó el pasante.');
+        }
+        if (! $this->hastaEnElFuturo($periodo)) {
+            return back()->with('error', 'Este período no necesita corrección: no cubre días posteriores a cuando se generó.');
+        }
+        if ($periodo->desde->gt($generado)) {
+            return back()->with('error', 'Este período empieza después del día en que se generó (' . $generado->format('d/m/Y')
+                . '), así que no se puede corregir acortando el "Hasta".');
+        }
+
+        $data = $request->validate([
+            'hasta'    => 'required|date|after_or_equal:' . $periodo->desde->toDateString() . '|before_or_equal:' . $generado->toDateString(),
+            'fechas'   => 'array',
+            'fechas.*' => 'nullable|date',
+        ], [
+            'hasta.after_or_equal'  => 'El nuevo "Hasta" no puede ser anterior al "Desde" (' . $periodo->desde->format('d/m/Y') . ').',
+            'hasta.before_or_equal' => 'El nuevo "Hasta" no puede ser posterior al día en que se generó el PDF (' . $generado->format('d/m/Y') . ').',
+        ]);
+
+        $nuevoHasta = Carbon::parse($data['hasta'])->startOfDay();
+        $gastos     = $this->gastosDelPeriodo($periodo);
+        $idsDelPdf  = $gastos->pluck('id');
+        $fuera      = $gastos->filter(fn (Gasto $g) => $g->fecha->gt($nuevoHasta));
+
+        // Fecha nueva para cada gasto que queda afuera. Un gasto cargado desde una actuación
+        // mueve la actuación entera (y sus otros gastos), porque la fecha del gasto sale de
+        // la fecha de actuación (ver SeguimientoController::sincronizarGasto()).
+        $porSeguimiento = [];
+        $sueltos        = [];
+        foreach ($fuera as $gasto) {
+            $fecha = $data['fechas'][$gasto->id] ?? null;
+            $etiqueta = ($gasto->concepto ?: 'Gasto') . ' (' . $gasto->fecha->format('d/m/Y') . ')';
+
+            if (! $fecha || Carbon::parse($fecha)->lt($periodo->desde) || Carbon::parse($fecha)->gt($nuevoHasta)) {
+                return back()->withInput()->with('error', "Elegí para \"{$etiqueta}\" una fecha entre el "
+                    . $periodo->desde->format('d/m/Y') . ' y el ' . $nuevoHasta->format('d/m/Y') . '.');
+            }
+
+            if (! $gasto->seguimiento_id) {
+                $sueltos[$gasto->id] = $fecha;
+                continue;
+            }
+
+            if (isset($porSeguimiento[$gasto->seguimiento_id]) && $porSeguimiento[$gasto->seguimiento_id] !== $fecha) {
+                return back()->withInput()->with('error', "Los gastos de una misma actuación tienen que quedar con la misma fecha (revisá \"{$etiqueta}\").");
+            }
+            $porSeguimiento[$gasto->seguimiento_id] = $fecha;
+        }
+
+        // Si la actuación tiene gastos que no son de este PDF (ej. uno agregado después de
+        // generarlo), moverla los dejaría con una fecha ya cerrada y no entrarían en ningún
+        // PDF futuro.
+        $ajenos = Gasto::whereIn('seguimiento_id', array_keys($porSeguimiento))->whereNotIn('id', $idsDelPdf)->exists();
+        if ($ajenos) {
+            return back()->withInput()->with('error', 'Una de las actuaciones tiene gastos que no forman parte de este PDF; corregí su fecha desde la actuación.');
+        }
+
+        DB::transaction(function () use ($periodo, $nuevoHasta, $porSeguimiento, $sueltos, $idsDelPdf) {
+            foreach ($porSeguimiento as $seguimientoId => $fecha) {
+                Seguimiento::whereKey($seguimientoId)->update(['fecha_actuacion' => $fecha]);
+                Gasto::where('seguimiento_id', $seguimientoId)->update(['fecha' => $fecha]);
+            }
+            foreach ($sueltos as $gastoId => $fecha) {
+                Gasto::whereKey($gastoId)->update(['fecha' => $fecha]);
+            }
+
+            $periodo->update([
+                'hasta_original' => $periodo->hasta_original ?? $periodo->hasta,
+                'hasta'          => $nuevoHasta,
+                'corregido_por'  => auth()->id(),
+                'corregido_at'   => now(),
+            ]);
+
+            // Red de seguridad: el PDF tiene que seguir teniendo exactamente los mismos gastos.
+            $despues = $this->gastosDelPeriodo($periodo->fresh())->pluck('id')->sort()->values();
+            if ($despues->all() !== $idsDelPdf->sort()->values()->all()) {
+                throw new \RuntimeException('La corrección cambiaría los gastos incluidos en el PDF.');
+            }
+        });
+
+        return back()->with('success', 'Período corregido: ' . $periodo->desde->format('d/m/Y') . ' — ' . $nuevoHasta->format('d/m/Y') . '.');
+    }
+
+    // El PDF cubre días posteriores al día en que se generó.
+    private function hastaEnElFuturo(ReportePasanteGenerado $periodo): bool
+    {
+        return $periodo->hasta->gt($periodo->created_at->copy()->startOfDay());
     }
 
     // Solo administración puede borrar un período generado (el Pasante no debería poder
@@ -459,17 +577,15 @@ class ReporteController extends Controller
                 $request->merge(['desde' => $siguienteDesde->toDateString()]);
             }
 
-            if (! $request->filled('hasta') && $hastaSugerido = $this->ultimoGastoPendiente($request)) {
-                $request->merge(['hasta' => $hastaSugerido]);
-            }
+            // El "Hasta" es siempre hoy (ver pasantes()), sin importar lo que venga en la URL.
+            $request->merge(['hasta' => today()->toDateString()]);
 
             $request->validate([
-                'desde' => 'required|date',
-                'hasta' => 'required|date|after_or_equal:desde',
+                'desde' => 'required|date|before_or_equal:hasta',
             ], [
-                'desde.required' => 'Para generar el reporte final elegí un rango de fechas (Desde/Hasta).',
-                'hasta.required' => 'Para generar el reporte final elegí un rango de fechas (Desde/Hasta).',
-                'hasta.after_or_equal' => 'La fecha "Hasta" no puede ser anterior a ' . Carbon::parse($request->desde)->format('d/m/Y') . '.',
+                'desde.required' => 'Para generar el primer reporte elegí la fecha "Desde".',
+                'desde.before_or_equal' => 'Ya generaste un PDF que cubre hasta hoy. El próximo se puede generar a partir del '
+                    . Carbon::parse($request->desde)->format('d/m/Y') . '.',
             ]);
         }
 
@@ -742,16 +858,6 @@ class ReporteController extends Controller
             ->when($request->filled('desde'), fn ($q) => $q->whereDate('fecha', '>=', $request->desde))
             ->when($request->filled('hasta'), fn ($q) => $q->whereDate('fecha', '<=', $request->hasta))
             ->orderByDesc('fecha');
-    }
-
-    // Fecha (Y-m-d) del último gasto propio todavía sin rendir, respetando "Desde" y el
-    // tipo de gasto elegidos pero no "Hasta". null si no queda ninguno pendiente.
-    private function ultimoGastoPendiente(Request $request): ?string
-    {
-        $sinHasta = $request->duplicate(array_diff_key($request->query(), ['hasta' => true]));
-        $fecha    = $this->queryGastosPasante($sinHasta, propio: true)->reorder()->max('fecha');
-
-        return $fecha ? Carbon::parse($fecha)->toDateString() : null;
     }
 
     private function siguienteDesdePropio(): ?Carbon
