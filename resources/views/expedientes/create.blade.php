@@ -99,6 +99,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de recepción</label>
                     <input type="date" name="fecha_recepcion" value="{{ old('fecha_recepcion') }}"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400">
+                    <p class="text-xs text-gray-400 mt-1">Si la dejás vacía, se usa la fecha de hoy.</p>
                 </div>
             </div>
             <div>

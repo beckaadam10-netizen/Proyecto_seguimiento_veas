@@ -129,7 +129,8 @@ class RastreoController extends Controller
         $etapas = [[
             'estado'        => 'iniciado',
             'label'         => $labels['iniciado'],
-            'fecha'         => $tramite->fecha_inicio,
+            // Sin fecha de inicio cargada, se toma el día en que se registró.
+            'fecha'         => $tramite->fecha_inicio ?? $tramite->created_at?->copy()->startOfDay(),
             'responsable'   => $tramite->responsable?->nombre ?? 'Estudio Jurídico',
             'descripcion'   => 'El trámite fue registrado en el sistema.',
             'observaciones' => null,
@@ -189,7 +190,8 @@ class RastreoController extends Controller
         $etapas = [[
             'estado'        => 'Activo',
             'label'         => 'Recibido',
-            'fecha'         => $expediente->fecha_recepcion,
+            // Sin fecha de recepción cargada, se toma el día en que se registró.
+            'fecha'         => $expediente->fecha_recepcion ?? $expediente->created_at?->copy()->startOfDay(),
             'responsable'   => $expediente->abogado?->nombre ?? 'Estudio Jurídico',
             'descripcion'   => 'El expediente fue registrado en el sistema.',
             'observaciones' => null,
@@ -270,18 +272,21 @@ class RastreoController extends Controller
             $desde = $etapa['fecha'];
             $hasta = $etapas[$i + 1]['fecha'] ?? null;
 
-            $etapa['gastos'] = $registro->gastos->filter(
-                fn ($g) => $g->fecha->gte($desde) && (! $hasta || $g->fecha->lt($hasta))
-            )->values();
+            // Una etapa sin fecha (dato incompleto) no pone límite de ese lado, en vez de
+            // romper la consulta del cliente.
+            $enRango = fn ($fecha) => $fecha
+                && (! $desde || $fecha->gte($desde))
+                && (! $hasta || $fecha->lt($hasta));
+
+            $etapa['gastos'] = $registro->gastos->filter(fn ($g) => $enRango($g->fecha))->values();
 
             $etapa['documentos'] = $registro->seguimientos->filter(
-                fn ($s) => $s->archivo_adjunto && $s->fecha_actuacion->gte($desde) && (! $hasta || $s->fecha_actuacion->lt($hasta))
+                fn ($s) => $s->archivo_adjunto && $enRango($s->fecha_actuacion)
             )->values();
 
             // Actualizaciones del caso (notas de avance) que caen en el rango de esta etapa.
-            $etapa['actualizaciones'] = $actualizaciones->filter(
-                fn ($a) => $a->created_at->gte($desde) && (! $hasta || $a->created_at->lt($hasta))
-            )->sortBy('created_at')->values();
+            $etapa['actualizaciones'] = $actualizaciones->filter(fn ($a) => $enRango($a->created_at))
+                ->sortBy('created_at')->values();
         }
         unset($etapa);
 

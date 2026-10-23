@@ -40,6 +40,17 @@ class Expediente extends Model
         'abogados_cliente' => 'array',
     ];
 
+    // Si no se carga (o se borra) la fecha de recepción, queda la del día en que se
+    // registró el expediente: el rastreo público y los reportes la usan como inicio.
+    protected static function booted(): void
+    {
+        static::saving(function (Expediente $expediente) {
+            if (! $expediente->fecha_recepcion) {
+                $expediente->fecha_recepcion = ($expediente->created_at ?? now())->toDateString();
+            }
+        });
+    }
+
     // ── Relaciones ────────────────────────────────────────────────
     public function cliente(): BelongsTo
     {
