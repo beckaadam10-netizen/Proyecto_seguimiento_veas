@@ -27,6 +27,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'rastreo',
         ]);
+
+        // La página Respaldos la lee desde JS para saber que la descarga terminó; solo
+        // lleva un token numérico (ver RespaldoController::crear).
+        $middleware->encryptCookies(except: [
+            'respaldo_listo',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

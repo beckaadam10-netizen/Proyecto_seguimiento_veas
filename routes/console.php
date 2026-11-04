@@ -12,3 +12,7 @@ Artisan::command('inspire', function () {
 // Programada (Windows) corriendo "php artisan schedule:run" cada minuto. Si no está
 // configurado, queda el botón manual en Bitácora como respaldo.
 Schedule::command('bitacora:limpiar')->daily();
+
+// Respaldo diario de la base y los documentos (se conservan 14 días). Sin cron queda el
+// botón "Crear respaldo ahora" en la página Respaldos.
+Schedule::command('respaldo:crear')->dailyAt('03:00');

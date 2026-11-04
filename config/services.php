@@ -28,6 +28,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Respaldos en Google Drive (ver App\Services\GoogleDriveRespaldos y la página Respaldos).
+    'google_drive' => [
+        'script_url' => env('GOOGLE_DRIVE_SCRIPT_URL'),
+        'clave'      => env('GOOGLE_DRIVE_CLAVE'),
+        'conservar'  => (int) env('GOOGLE_DRIVE_CONSERVAR_DIAS', 14),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

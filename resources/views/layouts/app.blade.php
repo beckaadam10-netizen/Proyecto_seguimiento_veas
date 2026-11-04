@@ -276,6 +276,13 @@
                     <i class="fas fa-clipboard-list w-5 text-center"></i> Bitácora
                 </a>
                 @endif
+
+                @if($u->esAdmin())
+                <a href="{{ route('respaldos.index') }}" title="Respaldos"
+                   class="sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-stone-300 hover:bg-brand-800 hover:text-brand-300 transition {{ request()->routeIs('respaldos.*') ? 'active' : '' }}">
+                    <i class="fas fa-database w-5 text-center"></i> Respaldos
+                </a>
+                @endif
             </div>
             @endif
 

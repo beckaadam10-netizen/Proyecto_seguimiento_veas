@@ -14,6 +14,7 @@ use App\Http\Controllers\GastoCobroController;
 use App\Http\Controllers\ParametroController;
 use App\Http\Controllers\RastreoController;
 use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\RespaldoController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\InstitucionPublicaController;
 use App\Http\Controllers\DocumentoController;
@@ -264,6 +265,13 @@ Route::middleware(['auth', 'cliente.verificado'])->group(function () {
     });
 
     // Bitácora (auditoría): solo lectura, salvo la limpieza manual de registros viejos.
+    // Respaldos: solo administrador (se controla en RespaldoController).
+    Route::get('respaldos', [RespaldoController::class, 'index'])->name('respaldos.index');
+    Route::post('respaldos', [RespaldoController::class, 'crear'])->name('respaldos.crear');
+    Route::post('respaldos/google-drive/probar', [RespaldoController::class, 'probarDrive'])->name('respaldos.drive.probar');
+    Route::post('respaldos/{archivo}/google-drive', [RespaldoController::class, 'subirADrive'])->name('respaldos.drive.subir');
+    Route::get('respaldos/{archivo}', [RespaldoController::class, 'descargar'])->name('respaldos.descargar');
+
     Route::get('bitacora', [BitacoraController::class, 'index'])
          ->middleware('permission:bitacora.ver')
          ->name('bitacora.index');
