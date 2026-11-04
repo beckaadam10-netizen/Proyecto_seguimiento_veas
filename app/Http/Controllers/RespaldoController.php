@@ -40,6 +40,7 @@ class RespaldoController extends Controller
             'configurado' => GoogleDriveRespaldos::configurado(),
             'registro'    => GoogleDriveRespaldos::registro(),
             'script'      => file_get_contents(resource_path('drive/respaldos-drive.gs')),
+            'manifiesto'  => file_get_contents(resource_path('drive/appsscript.json')),
             // Solo para copiar en la configuración inicial; no se guarda en ningún lado.
             'clave_sugerida' => Str::random(40),
         ];

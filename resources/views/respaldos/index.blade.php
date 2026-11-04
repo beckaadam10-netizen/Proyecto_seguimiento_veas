@@ -77,7 +77,7 @@
             <li>Entrá a <a href="https://script.google.com/home/projects/create" target="_blank" class="text-brand-700 underline">script.google.com</a>
                 con la cuenta de Google <strong>dueña de la carpeta</strong> y creá un proyecto nuevo (nombre: <em>Respaldos VEAS</em>).</li>
             <li>Borrá lo que tiene y pegá este código. Reemplazá <code>PEGAR_ACA_LA_CLAVE</code> por esta clave
-                (se genera una nueva cada vez que abrís esta página; usá la misma en los pasos 2 y 4):
+                (se genera una nueva cada vez que abrís esta página; usá la misma en los pasos 2 y 5):
                 <div class="flex gap-2 items-center my-2">
                     <code id="clave-drive" class="bg-gray-100 px-2 py-1 rounded select-all">{{ $drive['clave_sugerida'] }}</code>
                     <button type="button" onclick="copiarTexto('clave-drive', this)" class="text-brand-700 hover:underline">Copiar clave</button>
@@ -87,6 +87,14 @@
                     <button type="button" onclick="copiarTexto('script-drive', this)" class="absolute top-2 right-2 text-xs bg-white/90 px-2 py-1 rounded">Copiar código</button>
                 </div>
             </li>
+            <li>Permiso para escribir en Drive: en <strong>Configuración del proyecto</strong> (engranaje) activá
+                <em>"Mostrar el archivo de manifiesto appsscript.json"</em>. Volvé al editor, abrí <code>appsscript.json</code>,
+                reemplazá todo por esto y guardá:
+                <div class="relative my-2">
+                    <pre id="manifiesto-drive" class="bg-gray-900 text-gray-100 rounded-lg p-3 overflow-x-auto">{{ $drive['manifiesto'] }}</pre>
+                    <button type="button" onclick="copiarTexto('manifiesto-drive', this)" class="absolute top-2 right-2 text-xs bg-white/90 px-2 py-1 rounded">Copiar</button>
+                </div>
+                Después, en <code>Código.gs</code> elegí la función <strong>autorizar</strong> arriba y tocá <strong>Ejecutar</strong>: aceptá los permisos.</li>
             <li>Tocá <strong>Implementar → Nueva implementación</strong>, tipo <strong>Aplicación web</strong>:
                 <em>Ejecutar como:</em> <strong>Yo</strong>; <em>Quién tiene acceso:</em> <strong>Cualquier usuario</strong>.
                 Autorizá los permisos que pide (Google avisa que la app "no está verificada" porque es tuya: <em>Configuración avanzada → Ir a Respaldos VEAS</em>).

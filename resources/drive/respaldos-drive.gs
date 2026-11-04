@@ -4,6 +4,10 @@
  * Se publica como "Aplicación web" desde la cuenta de Google dueña de la carpeta.
  * Cuando el sistema le envía la clave correcta, devuelve un permiso temporal (1 hora)
  * para subir el respaldo a la carpeta indicada abajo. Sin la clave no devuelve nada.
+ *
+ * El permiso de ESCRITURA en Drive se declara en appsscript.json ("oauthScopes"): sin
+ * eso Apps Script ve que este código solo lee la carpeta y da un permiso de solo
+ * lectura, y Drive rechaza la subida ("insufficient authentication scopes").
  */
 
 // La misma clave que GOOGLE_DRIVE_CLAVE en el .env del servidor.
@@ -32,6 +36,12 @@ function doPost(e) {
     carpeta: CARPETA,
     nombre: carpeta.getName(),
   });
+}
+
+// Ejecutar esta función una vez desde el editor (botón "Ejecutar") para dar el permiso
+// de Drive. Hay que volver a hacerlo si se cambian los permisos de appsscript.json.
+function autorizar() {
+  Logger.log('Acceso correcto a la carpeta: ' + DriveApp.getFolderById(CARPETA).getName());
 }
 
 function responder(objeto) {

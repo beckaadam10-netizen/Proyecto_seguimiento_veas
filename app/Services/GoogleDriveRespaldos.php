@@ -167,6 +167,13 @@ class GoogleDriveRespaldos
 
     private function mensaje($respuesta): string
     {
-        return $respuesta->json('error.message') ?? ('HTTP ' . $respuesta->status());
+        $mensaje = $respuesta->json('error.message') ?? ('HTTP ' . $respuesta->status());
+
+        if (str_contains($mensaje, 'insufficient authentication scopes')) {
+            $mensaje .= ' — El script tiene permiso de solo lectura: agregá el permiso de Drive en appsscript.json, '
+                . 'ejecutá "autorizar" en el editor y publicá una versión nueva (ver la página Respaldos).';
+        }
+
+        return $mensaje;
     }
 }
